@@ -1,5 +1,6 @@
 package com.manish.orgcheszer.security;
 
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -29,12 +30,17 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .exceptionHandling(ex -> ex
+                        .authenticationEntryPoint(((request, response, authException) -> {
+                            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized");
+                        })))
                 .authorizeHttpRequests(auth -> auth
                         // Public endpoints — no token needed
                         .requestMatchers(
                                 "/api/auth/**",         // login, register
                                 "/api/tournaments",     // browse tournaments
-                                "/api/tournaments/{id}" // view tournament details
+                                "/api/tournaments/**", // view tournament details
+                                "/error"    // built-in fallback endpoint used to handle errors that occur during request processing
                         ).permitAll()
                         // Everything else requires authentication
                         .anyRequest().authenticated()
