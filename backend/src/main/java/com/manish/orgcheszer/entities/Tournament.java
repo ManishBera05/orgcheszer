@@ -1,5 +1,6 @@
 package com.manish.orgcheszer.entities;
 
+import com.manish.orgcheszer.enums.TournamentFormat;
 import com.manish.orgcheszer.enums.TournamentStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -46,9 +47,25 @@ public class Tournament {
     @Column(name = "max_participants_allowed", nullable = false)
     private int maxParticipants;
 
+    @Column(name = "entry_fee", nullable = false)
+    private int entryFee;
+
+    @Column(name = "description")
+    private String description;
+
+    @Column(name = "location", nullable = false)
+    private String location;
+
+    @Column(name = "time_control", nullable = false)
+    private String timeControl;
+
     @Enumerated(EnumType.STRING)
-    @Column(name = "tournament_status", nullable = false)
-    private TournamentStatus tournamentStatus;
+    @Column(name = "format", nullable = false)
+    private TournamentFormat format;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false)
+    private TournamentStatus status;
 
     @OneToMany(mappedBy = "tournament")
     private List<PlayerTournamentStats> playerTournamentStatsList;

@@ -1,7 +1,8 @@
 package com.manish.orgcheszer.enums;
 
 public enum TournamentStatus {
-    PENDING,
+    UPCOMING,
     ONGOING,
-    COMPLETED
+    COMPLETED,
+    CANCELLED
 }

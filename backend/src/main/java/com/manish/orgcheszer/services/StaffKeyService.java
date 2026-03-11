@@ -1,0 +1,144 @@
+package com.manish.orgcheszer.services;
+
+import com.manish.orgcheszer.dtos.StaffKeyResponse;
+import com.manish.orgcheszer.entities.StaffKey;
+import com.manish.orgcheszer.entities.Tournament;
+import com.manish.orgcheszer.entities.TournamentStaff;
+import com.manish.orgcheszer.entities.Users;
+import com.manish.orgcheszer.enums.TournamentStatus;
+import com.manish.orgcheszer.repositories.PlayerTournamentStatsRepository;
+import com.manish.orgcheszer.repositories.StaffKeyRepository;
+import com.manish.orgcheszer.repositories.TournamentRepository;
+import com.manish.orgcheszer.repositories.TournamentStaffRepository;
+import com.manish.orgcheszer.repositories.UsersRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.stereotype.Service;
+
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
+@Service
+@RequiredArgsConstructor
+public class StaffKeyService {
+
+    private final StaffKeyRepository staffKeyRepository;
+    private final TournamentRepository tournamentRepository;
+    private final TournamentStaffRepository tournamentStaffRepository;
+    private final UsersRepository usersRepository;
+    private final PlayerTournamentStatsRepository playerTournamentStatsRepository;
+
+    private Users getCurrentUser() {
+        String email = SecurityContextHolder.getContext()
+                .getAuthentication()
+                .getName();
+        return usersRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+    }
+
+    // Generate N keys for a tournament (organizer only)
+    public List<String> generateKeys(UUID tournamentId, int numberOfKeys) {
+        Tournament tournament = tournamentRepository.findById(tournamentId)
+                .orElseThrow(() -> new RuntimeException("Tournament not found"));
+
+        Users currentUser = getCurrentUser();
+        if (!tournament.getOrganizer().getId().equals(currentUser.getId())) {
+            throw new AccessDeniedException("Only the organizer can generate staff keys");
+        }
+
+        if (tournament.getStatus() != TournamentStatus.UPCOMING &&
+                tournament.getStatus() != TournamentStatus.ONGOING) {
+            throw new RuntimeException("Cannot generate keys for a cancelled or completed tournament");
+        }
+
+        List<String> keys = new ArrayList<>();
+
+        for (int i = 0; i < numberOfKeys; i++) {
+            String keyValue = UUID.randomUUID().toString();
+
+            StaffKey staffKey = new StaffKey();
+            staffKey.setKeyValue(keyValue);
+            staffKey.setTournament(tournament);
+            staffKey.setUsed(false);
+            staffKey.setCreatedAt(LocalDateTime.now());
+
+            staffKeyRepository.save(staffKey);
+            keys.add(keyValue);
+        }
+
+        return keys; // returned once to organizer, store them safely
+    }
+
+    // Redeem a key (staff member)
+    public void redeemKey(String keyValue) {
+        Users currentUser = getCurrentUser();
+
+        StaffKey staffKey = staffKeyRepository.findByKeyValue(keyValue)
+                .orElseThrow(() -> new RuntimeException("Invalid key"));
+
+        if (staffKey.isUsed()) {
+            throw new RuntimeException("This key has already been used");
+        }
+
+        Tournament tournament = staffKey.getTournament();
+
+        // Can't join as staff if already a player
+        if (playerTournamentStatsRepository
+                .existsByPlayerIdAndTournamentTournamentId(
+                        currentUser.getId(),
+                        tournament.getTournamentId())) {
+            throw new RuntimeException("You are already registered as a player in this tournament");
+        }
+
+        // Can't join as staff if already a staff
+        if (tournamentStaffRepository
+                .existsByUserIdAndTournamentTournamentId(
+                        currentUser.getId(),
+                        tournament.getTournamentId())) {
+            throw new RuntimeException("You are already a staff member in this tournament");
+        }
+
+        // Can't join as staff if you are the organizer
+        if (tournament.getOrganizer().getId().equals(currentUser.getId())) {
+            throw new RuntimeException("Organizer cannot be a staff member");
+        }
+
+        // Mark key as used
+        staffKey.setUsed(true);
+        staffKey.setUsedAt(LocalDateTime.now());
+        staffKeyRepository.save(staffKey);
+
+        // Create TournamentStaff entry
+        TournamentStaff tournamentStaff = new TournamentStaff();
+        tournamentStaff.setUser(currentUser);
+        tournamentStaff.setTournament(tournament);
+        tournamentStaff.setAssignedAt(LocalDateTime.now());
+        tournamentStaff.setKeyUsed(keyValue);
+        tournamentStaffRepository.save(tournamentStaff);
+    }
+
+    // View all keys for a tournament (organizer only)
+    public List<StaffKeyResponse> getKeysForTournament(UUID tournamentId) {
+        Tournament tournament = tournamentRepository.findById(tournamentId)
+                .orElseThrow(() -> new RuntimeException("Tournament not found"));
+
+        Users currentUser = getCurrentUser();
+        if (!tournament.getOrganizer().getId().equals(currentUser.getId())) {
+            throw new AccessDeniedException("Only the organizer can view staff keys");
+        }
+
+        return staffKeyRepository.findByTournamentTournamentId(tournamentId)
+                .stream()
+                .map(key -> new StaffKeyResponse(
+                        key.getKeyValue(),
+                        key.isUsed(),
+                        key.getCreatedAt(),
+                        key.getUsedAt()
+                ))
+                .collect(Collectors.toList());
+    }
+}
