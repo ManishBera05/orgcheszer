@@ -40,6 +40,7 @@ public class SecurityConfig {
                                 "/api/auth/**",         // login, register
                                 "/api/tournaments",     // browse tournaments
                                 "/api/tournaments/**", // view tournament details
+                                "/api/tournaments/*/leaderboard",
                                 "/error"    // built-in fallback endpoint used to handle errors that occur during request processing
                         ).permitAll()
                         // Everything else requires authentication

@@ -30,6 +30,7 @@ public class MatchmakingService {
     private final GameRepository                   gameRepository;
     private final PlayerTournamentStatsRepository  statsRepository;
     private final UsersRepository                  usersRepository;
+    private final LeaderboardService               leaderboardService;
     private final ApplicationContext               applicationContext; // to resolve @Component("SWISS") etc.
 
     // view pairings of existing rounds
@@ -278,6 +279,9 @@ public class MatchmakingService {
         // Update PlayerTournamentStats for both players
         updatePlayerScore(game.getWhitePlayer().getId(), tournamentId, result, true);
         updatePlayerScore(game.getBlackPlayer().getId(), tournamentId, result, false);
+
+        // Recalculate all tiebreakers after every result
+        leaderboardService.recalculateTiebreakers(tournamentId);
 
         // Check if this was the last game of the last round
         checkAndFinalizeTournament(tournament);

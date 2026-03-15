@@ -45,15 +45,23 @@ public class PlayerTournamentStats {
     private int byesReceived;
 
     @Column(name = "current_score", nullable = false)
-    private double currentScore; // require to store instead of calculating for faster generation of leaderboard
+    private double currentScore; // Store instead of calculating for faster leaderboard generation
 
-    private double sonnebornBerger; // for tiebreakers(more of these will be added later after reading all the documentations)
+    // Same as Buchholz but drop the lowest-scoring opponent.
+    // First tie-breaker priority for swiss tournametns
+    private double buchholzCut1;
 
-    /*
+    // For each player, sum up the current scores of every opponent they've faced.
+    // Second tie-breaker priority for swiss tournaments
+    private double buchholz;
 
-   --- more tiebreaker variable
-
+    /**
+     *  First priority in the Round-robin tournament tie-breaker
+     *  for each game: if you won, add your opponent's full score.
+     *  If you drew, add half your opponent's score.
+     *  If you lost, add nothing.
      */
+    private double sonnebornBerger;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "player_id", nullable = false )
