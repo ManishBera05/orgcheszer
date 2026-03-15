@@ -49,6 +49,9 @@ public class Users {
     @Column(name = "fide_id")
     private String fideId;
 
+    @Column(name = "elo_rating")
+    private int eloRating;
+
     @OneToMany(mappedBy = "whitePlayer")
     private List<Game> gamesAsWhite;
 
