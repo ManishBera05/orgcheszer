@@ -29,6 +29,8 @@ public class PlayerTournamentStats {
     @Column(name = "rank")
     private int finalRank;
 
+    private int pairingId; // assigned once at tournament start, reused every round(necessary for JaVaFo)
+
     @Column(name = "games_with_white")
     private int gamesWithWhite;
     @Column(name = "games_with_black")

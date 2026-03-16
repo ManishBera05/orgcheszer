@@ -8,6 +8,7 @@ import com.manish.orgcheszer.engine.models.Pairing;
 import com.manish.orgcheszer.engine.models.PlayerStanding;
 import com.manish.orgcheszer.entities.*;
 import com.manish.orgcheszer.enums.GameResult;
+import com.manish.orgcheszer.enums.TournamentFormat;
 import com.manish.orgcheszer.enums.TournamentStatus;
 import com.manish.orgcheszer.repositories.*;
 import lombok.RequiredArgsConstructor;
@@ -25,31 +26,35 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class MatchmakingService {
 
-    private final TournamentRepository             tournamentRepository;
-    private final RoundsRepository                 roundsRepository;
-    private final GameRepository                   gameRepository;
-    private final PlayerTournamentStatsRepository  statsRepository;
-    private final UsersRepository                  usersRepository;
-    private final LeaderboardService               leaderboardService;
-    private final ApplicationContext               applicationContext; // to resolve @Component("SWISS") etc.
+    private final TournamentRepository            tournamentRepository;
+    private final RoundsRepository                roundsRepository;
+    private final GameRepository                  gameRepository;
+    private final PlayerTournamentStatsRepository statsRepository;
+    private final UsersRepository                 usersRepository;
+    private final LeaderboardService              leaderboardService;
+    private final TournamentTicketRepository      ticketRepository;
+    private final ApplicationContext              applicationContext;
 
-    // view pairings of existing rounds
+    // ─────────────────────────────────────────────────────────────────────────
+    // PUBLIC METHODS
+    // ─────────────────────────────────────────────────────────────────────────
+
     public RoundPairingsResponse getRoundPairings(UUID tournamentId, int roundNumber) {
         Rounds round = roundsRepository
                 .findByTournamentTournamentIdAndRoundNumber(tournamentId, roundNumber)
                 .orElseThrow(() -> new RuntimeException("Round not found"));
 
-        List<Game> games = gameRepository.findByRoundId(round.getId());
-
-        List<GamePairingDTO> pairs = games.stream().map(g -> new GamePairingDTO(
-                g.getId(),
-                g.getWhitePlayer().getFirstName() + " " + g.getWhitePlayer().getLastName(),
-                g.getBlackPlayer() != null
-                        ? g.getBlackPlayer().getFirstName() + " " + g.getBlackPlayer().getLastName()
-                        : "BYE",
-                g.getBoardNumber(),
-                g.getResult() != null ? g.getResult().name() : "PENDING"
-        )).collect(Collectors.toList());
+        List<GamePairingDTO> pairs = gameRepository.findByRoundId(round.getId())
+                .stream()
+                .map(g -> new GamePairingDTO(
+                        g.getId(),
+                        g.getWhitePlayer().getFirstName() + " " + g.getWhitePlayer().getLastName(),
+                        g.getBlackPlayer() != null
+                                ? g.getBlackPlayer().getFirstName() + " " + g.getBlackPlayer().getLastName()
+                                : "BYE",
+                        g.getBoardNumber(),
+                        g.getResult() != null ? g.getResult().name() : "PENDING"))
+                .collect(Collectors.toList());
 
         return new RoundPairingsResponse(roundNumber, pairs);
     }
@@ -92,7 +97,6 @@ public class MatchmakingService {
                     .findByRoundId(lastRound.getId())
                     .stream()
                     .anyMatch(g -> g.getResult() == null || g.getResult() == GameResult.PENDING);
-
             if (hasUnfinishedGames) {
                 throw new RuntimeException(
                         "Cannot generate next round — round " + lastRound.getRoundNumber()
@@ -100,7 +104,16 @@ public class MatchmakingService {
             }
         }
 
-        // if next rounds is the first round set tournament status to ongoing
+        // FIX: validate check-ins BEFORE setting status to ONGOING
+        List<UUID> checkedInIds = ticketRepository.findCheckedInPlayerIds(tournamentId);
+        if (checkedInIds.isEmpty()) {
+            throw new RuntimeException(
+                    "No players have checked in yet — scan player tickets before generating pairings");
+        }
+        if (checkedInIds.size() < 2) {
+            throw new RuntimeException("At least 2 players must be checked in to generate pairings");
+        }
+
         if (nextRoundNumber == 1) {
             tournament.setStatus(TournamentStatus.ONGOING);
             tournamentRepository.save(tournament);
@@ -113,7 +126,10 @@ public class MatchmakingService {
 
         // Build PlayerStanding list
         List<PlayerTournamentStats> allStats = statsRepository
-                .findByTournamentTournamentIdOrderByCurrentScoreDesc(tournamentId); // needs upgradation with the FIDE tie-break system
+                .findByTournamentTournamentIdOrderByCurrentScoreDesc(tournamentId)
+                .stream()
+                .filter(s -> checkedInIds.contains(s.getPlayer().getId()))
+                .collect(Collectors.toList());
 
         // Build pairing ID map: UUID → pairingId (1-based, sorted by rating DESC) required for the JaVaFo API
         // This must be consistent every round, sort by rating then by UUID for stability
@@ -121,33 +137,35 @@ public class MatchmakingService {
         sortedByRating.sort(Comparator
                 .comparingInt((PlayerTournamentStats s) -> s.getPlayer().getEloRating())
                 .reversed()
-                .thenComparing(s -> s.getPlayer().getId().toString())); // stable tiebreak
+                .thenComparing(s -> s.getPlayer().getId().toString()));
 
-        Map<UUID, Integer> uuidToPairingId = new LinkedHashMap<>();
-        for (int i = 0; i < sortedByRating.size(); i++) {
-            uuidToPairingId.put(sortedByRating.get(i).getPlayer().getId(), i + 1);
+        // Use permanently stored pairingIds — no sorting needed
+        Map<UUID, Integer> pairingIdMap = new LinkedHashMap<>();
+        for (PlayerTournamentStats s : allStats) {
+            pairingIdMap.put(s.getPlayer().getId(), s.getPairingId());
         }
 
-        // Build reverse map for history building
-        Map<UUID, Integer> pairingIdMap = uuidToPairingId;
+        List<PlayerStanding> standings = allStats.stream()
+                .map(s -> buildPlayerStanding(s, pairingIdMap, allGames, nextRoundNumber - 1))
+                .collect(Collectors.toList());
 
-        List<PlayerStanding> standings = new ArrayList<>();
-        for (PlayerTournamentStats stats : allStats) {
-            standings.add(buildPlayerStanding(
-                    stats, pairingIdMap, allGames, nextRoundNumber - 1));
+        PairingEngine engine = (PairingEngine) applicationContext
+                .getBean(tournament.getFormat().name());
+
+        if (tournament.getFormat() == TournamentFormat.ROUND_ROBIN) {
+            if (nextRoundNumber > 1) {
+                throw new RuntimeException(
+                        "Round Robin pairings are generated all at once — all rounds already exist");
+            }
+            generateAllRoundRobinRounds(tournament, standings, engine);
+            return getRoundPairings(tournamentId, 1);
         }
 
-        // Resolve the correct engine via format
-        String engineBeanName = tournament.getFormat().name(); // "SWISS" or "ROUND_ROBIN"
-        PairingEngine engine = (PairingEngine) applicationContext.getBean(engineBeanName);
-
-        // Generate pairings
         List<Pairing> pairings = engine.generatePairings(
                 standings, nextRoundNumber, tournament.getNumberOfRounds());
 
-        // Handle bad round generation request
         if (pairings.isEmpty()) {
-            long validPairsRemaining = checkRemainingPossiblePairs(tournamentId);
+            long validPairsRemaining = checkRemainingPossiblePairs(tournamentId, checkedInIds);
             if (validPairsRemaining == 0) {
                 tournament.setStatus(TournamentStatus.COMPLETED);
                 tournament.setNumberOfRounds(nextRoundNumber - 1);
@@ -156,18 +174,15 @@ public class MatchmakingService {
                         "No valid pairings possible — all players have already played each other. " +
                                 "Tournament finalized at round " + (nextRoundNumber - 1));
             }
-            throw new RuntimeException(
-                    "Pairing engine returned no pairings — check TRF file format");
+            throw new RuntimeException("Pairing engine returned no pairings — check TRF file format");
         }
 
-        // Create Round entity
         Rounds newRound = new Rounds();
         newRound.setRoundNumber(nextRoundNumber);
         newRound.setTournament(tournament);
         newRound.setStartTime(LocalDateTime.now());
         roundsRepository.save(newRound);
 
-        // Create Game entities
         int boardNumber = 1;
         for (Pairing pairing : pairings) {
             Users whitePlayer = usersRepository.findById(pairing.getWhitePlayerId())
@@ -180,7 +195,8 @@ public class MatchmakingService {
 
             if (pairing.isBye()) {
                 game.setBlackPlayer(null);
-                game.setResult(GameResult.BYE); // auto-resolve immediately
+                game.setResult(GameResult.BYE);
+                updatePlayerScore(pairing.getWhitePlayerId(), tournamentId, GameResult.BYE, true);
             } else {
                 Users blackPlayer = usersRepository.findById(pairing.getBlackPlayerId())
                         .orElseThrow(() -> new RuntimeException("Black player not found"));
@@ -189,108 +205,128 @@ public class MatchmakingService {
             }
 
             gameRepository.save(game);
-
-            // Auto-update stats for bye player immediately
-            if (pairing.isBye()) {
-                updatePlayerScore(
-                        pairing.getWhitePlayerId(), tournamentId, GameResult.BYE, true);
-            }
         }
 
-        // Return pairings as response
         return getRoundPairings(tournamentId, nextRoundNumber);
     }
 
-    // Checks how many unplayed pairs still remain in the tournament
-    // Used to distinguish "no valid pairings" from a TRF format error
-    private long checkRemainingPossiblePairs(UUID tournamentId) {
-        List<PlayerTournamentStats> allStats = statsRepository
-                .findByTournamentTournamentIdOrderByCurrentScoreDesc(tournamentId);
-
-        List<Game> allGames = roundsRepository
-                .findByTournamentTournamentIdOrderByRoundNumber(tournamentId)
-                .stream()
-                .flatMap(r -> gameRepository.findByRoundId(r.getId()).stream())
-                .filter(g -> g.getBlackPlayer() != null) // exclude byes
-                .collect(Collectors.toList());
-
-        // Build set of already-played pairs
-        Set<String> playedPairs = new HashSet<>();
-        for (Game g : allGames) {
-            playedPairs.add(sortedPairKey(
-                    g.getWhitePlayer().getId(),
-                    g.getBlackPlayer().getId()));
-        }
-
-        // Count remaining valid pairs
-        List<UUID> playerIds = allStats.stream()
-                .map(s -> s.getPlayer().getId())
-                .collect(Collectors.toList());
-
-        long validPairsRemaining = 0;
-        for (int i = 0; i < playerIds.size(); i++) {
-            for (int j = i + 1; j < playerIds.size(); j++) {
-                if (!playedPairs.contains(
-                        sortedPairKey(playerIds.get(i), playerIds.get(j)))) {
-                    validPairsRemaining++;
-                }
-            }
-        }
-        return validPairsRemaining;
-    }
-
-    private String sortedPairKey(UUID a, UUID b) {
-        return a.compareTo(b) < 0 ? a + "_" + b : b + "_" + a;
-    }
-
-    // SUBMIT GAME RESULT
-    // Called by organizer or staff after each game finishes
     @Transactional
     public void submitResult(UUID tournamentId, UUID gameId, GameResult result) {
-
-        // Auth: organizer or staff only
         Users currentUser = getCurrentUser();
         Tournament tournament = tournamentRepository.findById(tournamentId)
                 .orElseThrow(() -> new RuntimeException("Tournament not found"));
 
         boolean isOrganizer = tournament.getOrganizer().getId().equals(currentUser.getId());
-        boolean isStaff     = tournament.getStaffs().stream()
+        boolean isStaff = tournament.getStaffs().stream()
                 .anyMatch(s -> s.getUser().getId().equals(currentUser.getId()));
 
         if (!isOrganizer && !isStaff) {
             throw new AccessDeniedException("Only organizer or staff can submit results");
         }
 
-        // Load and validate game
         Game game = gameRepository.findById(gameId)
                 .orElseThrow(() -> new RuntimeException("Game not found"));
 
-        if (game.getResult() != GameResult.PENDING) {
-            throw new RuntimeException("Result already submitted for this game");
+        // FIX: guard against bye games
+        if (game.getBlackPlayer() == null) {
+            throw new RuntimeException("Cannot manually submit result for a bye game");
         }
         if (result == GameResult.PENDING || result == GameResult.BYE) {
             throw new RuntimeException("Invalid result submitted");
         }
 
-        // Save result
+        boolean isResultAlreadySet = game.getResult() != null
+                && game.getResult() != GameResult.PENDING;
+
+        if (isResultAlreadySet && !isOrganizer) {
+            throw new AccessDeniedException(
+                    "Result already submitted — only the organizer can change it");
+        }
+
+        if (isResultAlreadySet && isOrganizer) {
+            int currentRoundNumber = game.getRound().getRoundNumber();
+            boolean nextRoundExists = roundsRepository
+                    .findByTournamentTournamentIdAndRoundNumber(
+                            tournamentId, currentRoundNumber + 1)
+                    .isPresent();
+            if (nextRoundExists) {
+                throw new RuntimeException(
+                        "Cannot change result — round " + (currentRoundNumber + 1)
+                                + " has already been generated");
+            }
+            reversePlayerScore(game.getWhitePlayer().getId(), tournamentId, game.getResult(), true);
+            reversePlayerScore(game.getBlackPlayer().getId(), tournamentId, game.getResult(), false);
+        }
+
         game.setResult(result);
         gameRepository.save(game);
 
-        // Update PlayerTournamentStats for both players
         updatePlayerScore(game.getWhitePlayer().getId(), tournamentId, result, true);
         updatePlayerScore(game.getBlackPlayer().getId(), tournamentId, result, false);
 
-        // Recalculate all tiebreakers after every result
         leaderboardService.recalculateTiebreakers(tournamentId);
-
-        // Check if this was the last game of the last round
         checkAndFinalizeTournament(tournament);
     }
 
-    // UPDATE PLAYER SCORE + STATS after a result is submitted
+    // ─────────────────────────────────────────────────────────────────────────
+    // PRIVATE METHODS
+    // ─────────────────────────────────────────────────────────────────────────
+
+    private void generateAllRoundRobinRounds(Tournament tournament,
+                                             List<PlayerStanding> standings,
+                                             PairingEngine engine) {
+        // FIX: recalculate rounds based on actual checked-in player count
+        int actualPlayers = standings.size();
+        int actualRounds  = actualPlayers % 2 == 0 ? actualPlayers - 1 : actualPlayers;
+
+        tournament.setNumberOfRounds(actualRounds);
+        tournamentRepository.save(tournament);
+
+        List<Pairing> allPairings = engine.generatePairings(standings, 1, actualRounds);
+
+        Map<Integer, List<Pairing>> byRound = new LinkedHashMap<>();
+        for (Pairing p : allPairings) {
+            byRound.computeIfAbsent(p.getRoundNumber(), k -> new ArrayList<>()).add(p);
+        }
+
+        for (Map.Entry<Integer, List<Pairing>> entry : byRound.entrySet()) {
+            Rounds round = new Rounds();
+            round.setRoundNumber(entry.getKey());
+            round.setTournament(tournament);
+            roundsRepository.save(round);
+
+            int boardNumber = 1;
+            for (Pairing pairing : entry.getValue()) {
+                Users whitePlayer = usersRepository.findById(pairing.getWhitePlayerId())
+                        .orElseThrow(() -> new RuntimeException("Player not found"));
+
+                Game game = new Game();
+                game.setRound(round);
+                game.setWhitePlayer(whitePlayer);
+                game.setBoardNumber(boardNumber++);
+
+                if (pairing.isBye()) {
+                    game.setBlackPlayer(null);
+                    game.setResult(GameResult.BYE);
+                    updatePlayerScore(pairing.getWhitePlayerId(),
+                            tournament.getTournamentId(), GameResult.BYE, true);
+                } else {
+                    Users blackPlayer = usersRepository.findById(pairing.getBlackPlayerId())
+                            .orElseThrow(() -> new RuntimeException("Player not found"));
+                    game.setBlackPlayer(blackPlayer);
+                    game.setResult(GameResult.PENDING);
+                }
+
+                gameRepository.save(game);
+            }
+        }
+
+        tournament.setStatus(TournamentStatus.ONGOING);
+        tournamentRepository.save(tournament);
+    }
+
     private void updatePlayerScore(UUID playerId, UUID tournamentId,
                                    GameResult result, boolean isWhite) {
-
         PlayerTournamentStats stats = statsRepository
                 .findByPlayerIdAndTournamentTournamentId(playerId, tournamentId)
                 .orElseThrow(() -> new RuntimeException("Player stats not found"));
@@ -299,13 +335,11 @@ public class MatchmakingService {
             case WHITE_WINS -> isWhite ? 1.0 : 0.0;
             case BLACK_WINS -> isWhite ? 0.0 : 1.0;
             case DRAW       -> 0.5;
-            case BYE        -> 1.0; // FIDE: bye = full point
+            case BYE        -> 1.0;
             default         -> 0.0;
         };
-
         stats.setCurrentScore(stats.getCurrentScore() + points);
 
-        // Update color counters
         if (result != GameResult.BYE) {
             if (isWhite) {
                 stats.setGamesWithWhite(stats.getGamesWithWhite() + 1);
@@ -323,16 +357,44 @@ public class MatchmakingService {
         statsRepository.save(stats);
     }
 
-    // BUILDS PlayerStanding from DB data
-    // This is the bridge between entities and the pairing engine
+    private void reversePlayerScore(UUID playerId, UUID tournamentId,
+                                    GameResult oldResult, boolean wasWhite) {
+        PlayerTournamentStats stats = statsRepository
+                .findByPlayerIdAndTournamentTournamentId(playerId, tournamentId)
+                .orElseThrow(() -> new RuntimeException("Player stats not found"));
+
+        double pointsToRemove = switch (oldResult) {
+            case WHITE_WINS -> wasWhite ? 1.0 : 0.0;
+            case BLACK_WINS -> wasWhite ? 0.0 : 1.0;
+            case DRAW       -> 0.5;
+            default         -> 0.0;
+        };
+        stats.setCurrentScore(stats.getCurrentScore() - pointsToRemove);
+
+        if (wasWhite) {
+            stats.setGamesWithWhite(Math.max(0, stats.getGamesWithWhite() - 1));
+            if (oldResult == GameResult.WHITE_WINS)
+                stats.setWinsWithWhite(Math.max(0, stats.getWinsWithWhite() - 1));
+            if (oldResult == GameResult.DRAW)
+                stats.setDrawsWithWhite(Math.max(0, stats.getDrawsWithWhite() - 1));
+        } else {
+            stats.setGamesWithBlack(Math.max(0, stats.getGamesWithBlack() - 1));
+            if (oldResult == GameResult.BLACK_WINS)
+                stats.setWinsWithBlack(Math.max(0, stats.getWinsWithBlack() - 1));
+            if (oldResult == GameResult.DRAW)
+                stats.setDrawsWithBlack(Math.max(0, stats.getDrawsWithBlack() - 1));
+        }
+
+        statsRepository.save(stats);
+    }
+
     private PlayerStanding buildPlayerStanding(PlayerTournamentStats stats,
                                                Map<UUID, Integer> pairingIdMap,
                                                List<Game> allGames,
                                                int roundsPlayed) {
         Users player = stats.getPlayer();
-
-        // Build match history in round order
         List<PastMatch> history = new ArrayList<>();
+
         for (int round = 1; round <= roundsPlayed; round++) {
             final int r = round;
             Optional<Game> gameOpt = allGames.stream()
@@ -343,35 +405,32 @@ public class MatchmakingService {
                     .findFirst();
 
             if (gameOpt.isEmpty() || gameOpt.get().getBlackPlayer() == null) {
-                // Pairing-allocated bye — JaVaFo requires '+'
                 history.add(new PastMatch(0, '-', '+'));
                 continue;
             }
 
-            Game   game    = gameOpt.get();
+            Game    game    = gameOpt.get();
             boolean isWhite = game.getWhitePlayer().getId().equals(player.getId());
             Users   opp     = isWhite ? game.getBlackPlayer() : game.getWhitePlayer();
             int     oppId   = pairingIdMap.getOrDefault(opp.getId(), 0);
-            char    color   = isWhite ? 'w' : 'b';
-            char    result  = resolveResultChar(game.getResult(), isWhite);
 
-            history.add(new PastMatch(oppId, color, result));
+            history.add(new PastMatch(oppId, isWhite ? 'w' : 'b',
+                    resolveResultChar(game.getResult(), isWhite)));
         }
 
         return PlayerStanding.builder()
                 .playerId(player.getId())
-                .pairingId(pairingIdMap.get(player.getId()))
+                .pairingId(stats.getPairingId())
                 .name(player.getFirstName() + " " + player.getLastName())
                 .rating(player.getEloRating())
-                .title("")          // add title field to Users entity later
-                .federation("IND")  // add federation field to Users entity later
+                .title("")
+                .federation("IND")
                 .currentScore(stats.getCurrentScore())
                 .rank(pairingIdMap.get(player.getId()))
                 .matchHistory(history)
                 .build();
     }
 
-    // Converts GameResult + perspective to TRF result character=
     private char resolveResultChar(GameResult result, boolean isWhite) {
         return switch (result) {
             case WHITE_WINS -> isWhite ? '1' : '0';
@@ -382,18 +441,47 @@ public class MatchmakingService {
         };
     }
 
-    // Checks if all rounds are complete and finalizes the tournament
+    // FIX: now accepts checkedInIds to avoid duplicate DB call
+    private long checkRemainingPossiblePairs(UUID tournamentId, List<UUID> checkedInIds) {
+        List<UUID> playerIds = statsRepository
+                .findByTournamentTournamentIdOrderByCurrentScoreDesc(tournamentId)
+                .stream()
+                .filter(s -> checkedInIds.contains(s.getPlayer().getId()))
+                .map(s -> s.getPlayer().getId())
+                .collect(Collectors.toList());
+
+        Set<String> playedPairs = roundsRepository
+                .findByTournamentTournamentIdOrderByRoundNumber(tournamentId)
+                .stream()
+                .flatMap(r -> gameRepository.findByRoundId(r.getId()).stream())
+                .filter(g -> g.getBlackPlayer() != null)
+                .map(g -> sortedPairKey(g.getWhitePlayer().getId(), g.getBlackPlayer().getId()))
+                .collect(Collectors.toSet());
+
+        long validPairsRemaining = 0;
+        for (int i = 0; i < playerIds.size(); i++) {
+            for (int j = i + 1; j < playerIds.size(); j++) {
+                if (!playedPairs.contains(sortedPairKey(playerIds.get(i), playerIds.get(j)))) {
+                    validPairsRemaining++;
+                }
+            }
+        }
+        return validPairsRemaining;
+    }
+
+    private String sortedPairKey(UUID a, UUID b) {
+        return a.compareTo(b) < 0 ? a + "_" + b : b + "_" + a;
+    }
+
     private void checkAndFinalizeTournament(Tournament tournament) {
         List<Rounds> allRounds = roundsRepository
-                .findByTournamentTournamentIdOrderByRoundNumber(
-                        tournament.getTournamentId());
+                .findByTournamentTournamentIdOrderByRoundNumber(tournament.getTournamentId());
 
         if (allRounds.size() < tournament.getNumberOfRounds()) return;
 
         boolean allComplete = allRounds.stream()
                 .flatMap(r -> gameRepository.findByRoundId(r.getId()).stream())
-                .allMatch(g -> g.getResult() != null
-                        && g.getResult() != GameResult.PENDING);
+                .allMatch(g -> g.getResult() != null && g.getResult() != GameResult.PENDING);
 
         if (allComplete) {
             tournament.setStatus(TournamentStatus.COMPLETED);
@@ -401,10 +489,8 @@ public class MatchmakingService {
         }
     }
 
-    // Helper function to get the current user of the current session
     private Users getCurrentUser() {
-        String email = SecurityContextHolder.getContext()
-                .getAuthentication().getName();
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
         return usersRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
     }

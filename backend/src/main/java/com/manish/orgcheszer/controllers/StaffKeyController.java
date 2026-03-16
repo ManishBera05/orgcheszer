@@ -31,7 +31,7 @@ public class StaffKeyController {
                 .body(staffKeyService.generateKeys(tournamentId, numberOfKeys));
     }
 
-    // Redeem a key (staff member i.e any other user on the platform except the organizer himself or the player of the tournament)
+    // Redeem a key (staff member i.e. any other user on the platform except the organizer himself or the player of the tournament)
     @PostMapping("/staff-keys/redeem")
     public ResponseEntity<Void> redeemKey(@RequestParam String keyValue) {
         staffKeyService.redeemKey(keyValue);

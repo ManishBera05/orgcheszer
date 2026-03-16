@@ -13,9 +13,8 @@ import java.util.UUID;
 @AllArgsConstructor
 public class Pairing {
     private UUID whitePlayerId;
-
     // Will be null if isBye is true
     private UUID blackPlayerId;
-
     private boolean isBye;
+    private int     roundNumber;
 }

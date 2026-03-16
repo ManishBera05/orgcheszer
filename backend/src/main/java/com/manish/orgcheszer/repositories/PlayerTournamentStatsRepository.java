@@ -11,6 +11,7 @@ import java.util.UUID;
 @Repository
 public interface PlayerTournamentStatsRepository extends JpaRepository<PlayerTournamentStats, UUID> {
     boolean existsByPlayerIdAndTournamentTournamentId(UUID userId, UUID tournamentId);  // role check
+    int countByTournamentTournamentId(UUID tournamentId);
     Optional<PlayerTournamentStats> findByPlayerIdAndTournamentTournamentId(UUID playerId, UUID tournamentId);
     List<PlayerTournamentStats> findByTournamentTournamentIdOrderByCurrentScoreDesc(UUID tournamentId); // leaderboard
 }
