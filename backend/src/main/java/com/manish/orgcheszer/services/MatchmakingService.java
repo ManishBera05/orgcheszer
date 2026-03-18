@@ -35,9 +35,7 @@ public class MatchmakingService {
     private final TournamentTicketRepository      ticketRepository;
     private final ApplicationContext              applicationContext;
 
-    // ─────────────────────────────────────────────────────────────────────────
     // PUBLIC METHODS
-    // ─────────────────────────────────────────────────────────────────────────
 
     public RoundPairingsResponse getRoundPairings(UUID tournamentId, int roundNumber) {
         Rounds round = roundsRepository
@@ -197,6 +195,14 @@ public class MatchmakingService {
                 game.setBlackPlayer(null);
                 game.setResult(GameResult.BYE);
                 updatePlayerScore(pairing.getWhitePlayerId(), tournamentId, GameResult.BYE, true);
+
+                PlayerTournamentStats byeStats = statsRepository
+                        .findByPlayerIdAndTournamentTournamentId(
+                                pairing.getWhitePlayerId(), tournamentId)
+                        .orElseThrow();
+                byeStats.getOpponentIds().add(null);
+                statsRepository.save(byeStats);
+
             } else {
                 Users blackPlayer = usersRepository.findById(pairing.getBlackPlayerId())
                         .orElseThrow(() -> new RuntimeException("Black player not found"));
@@ -260,6 +266,10 @@ public class MatchmakingService {
 
         game.setResult(result);
         gameRepository.save(game);
+
+        // After saving the result, record opponents for both players
+        addOpponent(game.getWhitePlayer().getId(), tournamentId, game.getBlackPlayer().getId());
+        addOpponent(game.getBlackPlayer().getId(), tournamentId, game.getWhitePlayer().getId());
 
         updatePlayerScore(game.getWhitePlayer().getId(), tournamentId, result, true);
         updatePlayerScore(game.getBlackPlayer().getId(), tournamentId, result, false);
@@ -467,6 +477,14 @@ public class MatchmakingService {
             }
         }
         return validPairsRemaining;
+    }
+
+    private void addOpponent(UUID playerId, UUID tournamentId, UUID opponentId) {
+        PlayerTournamentStats stats = statsRepository
+                .findByPlayerIdAndTournamentTournamentId(playerId, tournamentId)
+                .orElseThrow();
+        stats.getOpponentIds().add(opponentId);
+        statsRepository.save(stats);
     }
 
     private String sortedPairKey(UUID a, UUID b) {

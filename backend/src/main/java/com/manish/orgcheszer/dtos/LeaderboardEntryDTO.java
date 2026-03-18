@@ -6,6 +6,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.util.UUID;
+
 @Getter
 @Setter
 @NoArgsConstructor
@@ -13,6 +15,7 @@ import lombok.Setter;
 @Builder
 public class LeaderboardEntryDTO {
     private int    rank;
+    private UUID   playerID;
     private String playerName;
     private String fideId;
     private int    eloRating;

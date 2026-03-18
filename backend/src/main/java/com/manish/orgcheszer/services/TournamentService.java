@@ -1,6 +1,7 @@
 package com.manish.orgcheszer.services;
 
 import com.manish.orgcheszer.dtos.TournamentCreateRequest;
+import com.manish.orgcheszer.dtos.TournamentPlayerDTO;
 import com.manish.orgcheszer.dtos.TournamentResponse;
 import com.manish.orgcheszer.entities.PlayerTournamentStats;
 import com.manish.orgcheszer.entities.Tournament;
@@ -259,5 +260,30 @@ public class TournamentService {
                 tournament.getPlayers() != null ? tournament.getPlayers().size() : 0
         );
         return response;
+    }
+
+    public List<TournamentPlayerDTO> getTournamentPlayers(UUID tournamentId) {
+        Tournament tournament = tournamentRepository.findById(tournamentId)
+                .orElseThrow(() -> new RuntimeException("Tournament not found"));
+
+        return tournament.getPlayers().stream()
+                .map(player -> {
+                    TournamentTicket ticket = ticketRepository
+                            .findByPlayerIdAndTournamentTournamentId(
+                                    player.getId(), tournamentId)
+                            .orElse(null);
+
+                    return TournamentPlayerDTO.builder()
+                            .userId(player.getId())
+                            .firstName(player.getFirstName())
+                            .lastName(player.getLastName())
+                            .eloRating(player.getEloRating())
+                            .fideId(player.getFideId())
+                            .checkInStatus(ticket != null
+                                    ? ticket.getStatus().name()
+                                    : "NOT_REGISTERED")
+                            .build();
+                })
+                .collect(Collectors.toList());
     }
 }

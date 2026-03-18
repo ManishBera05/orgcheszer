@@ -19,11 +19,6 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuthController {
 
     private final AuthService authService;
-    // remove this after done
-    @GetMapping("/home")
-    public String home(){
-        return "Server Started";
-    }
 
     @PostMapping("/register")
     public ResponseEntity<AuthResponse> register(@RequestBody RegisterRequest request) {

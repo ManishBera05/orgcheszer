@@ -30,7 +30,7 @@ public class TournamentStaff {
     @Column(nullable = false)
     private LocalDateTime assignedAt;
 
-    @Column(name = "key", unique = true, nullable = false)
+    @Column(name = "key_used", unique = true, nullable = false)
     private String keyUsed; // the staff key they redeemed to join
 
     @ManyToOne(fetch = FetchType.LAZY)

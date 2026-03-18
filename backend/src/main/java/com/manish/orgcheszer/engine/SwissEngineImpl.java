@@ -21,7 +21,8 @@ public class SwissEngineImpl implements PairingEngine {
                                           int totalRounds) {
 
         // Sort by rating DESC, assign 1-based pairing IDs
-        players.sort(Comparator.comparingInt(PlayerStanding::getRating).reversed());
+        players.sort(Comparator.comparingInt(PlayerStanding::getRating).reversed()
+                .thenComparingInt(PlayerStanding::getPairingId)); // ← guarantees consistent order
 
         Map<Integer, UUID> idToUuidMap = new HashMap<>();
         for (int i = 0; i < players.size(); i++) {

@@ -1,6 +1,7 @@
 package com.manish.orgcheszer.controllers;
 
 import com.manish.orgcheszer.dtos.TournamentCreateRequest;
+import com.manish.orgcheszer.dtos.TournamentPlayerDTO;
 import com.manish.orgcheszer.dtos.TournamentResponse;
 import com.manish.orgcheszer.services.TournamentService;
 import lombok.RequiredArgsConstructor;
@@ -64,6 +65,12 @@ public class TournamentController {
     @GetMapping("/my-tournaments")
     public ResponseEntity<List<TournamentResponse>> getMyTournaments() {
         return ResponseEntity.ok(tournamentService.getMyTournaments());
+    }
+
+    @GetMapping("/{tournamentId}/players")
+    public ResponseEntity<List<TournamentPlayerDTO>> getTournamentPlayers(
+            @PathVariable UUID tournamentId) {
+        return ResponseEntity.ok(tournamentService.getTournamentPlayers(tournamentId));
     }
 
     // Player Endpoints (token required)

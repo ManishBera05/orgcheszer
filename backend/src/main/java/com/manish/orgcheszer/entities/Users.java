@@ -52,6 +52,15 @@ public class Users {
     @Column(name = "elo_rating")
     private int eloRating;
 
+    @Column(nullable = true)
+    private String title;        // "g", "m", "f", "wg" etc
+
+    @Column(nullable = true)
+    private String federation;   // "IND", "NOR" etc
+
+    @Column(nullable = true)
+    private String sex;          // "m", "w"
+
     @OneToMany(mappedBy = "whitePlayer")
     private List<Game> gamesAsWhite;
 

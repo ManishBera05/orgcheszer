@@ -41,8 +41,16 @@ public class SecurityConfig {
                                 "/api/tournaments",     // browse tournaments
                                 "/api/tournaments/**", // view tournament details
                                 "/api/tournaments/*/leaderboard",
+                                "/api/tournaments/*/players",
+                                "/swagger-ui.html",
+                                "/swagger-ui.html",
+                                "/swagger-ui/**",
+                                "/v3/api-docs/**",
+                                "/v3/api-docs",
+                                "/api/users/**",
                                 "/error"    // built-in fallback endpoint used to handle errors that occur during request processing
                         ).permitAll()
+//                        .requestMatchers("/api/tournaments/*/players").permitAll()
                         // Everything else requires authentication
                         .anyRequest().authenticated()
                 )

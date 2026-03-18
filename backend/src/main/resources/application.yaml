@@ -21,3 +21,10 @@ application:
     jwt:
       secret-key: ${JWT_KEY}
       expiration: 86400000
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: true
+  api-docs:
+    enabled: true
+

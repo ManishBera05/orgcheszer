@@ -23,6 +23,7 @@ public class LeaderboardService {
 
     // GET LEADERBOARD
     // Returns sorted standings for a tournament at any point in time
+    @Transactional(readOnly = true) // Still good practice for read operations
     public List<LeaderboardEntryDTO> getLeaderboard(UUID tournamentId) {
         Tournament tournament = tournamentRepository.findById(tournamentId)
                 .orElseThrow(() -> new RuntimeException("Tournament not found"));
@@ -35,6 +36,7 @@ public class LeaderboardService {
                         .playerName(stats.getPlayer().getFirstName()
                                 + " " + stats.getPlayer().getLastName())
                         .fideId(stats.getPlayer().getFideId())
+                        .playerID(stats.getPlayer().getId())
                         .eloRating(stats.getPlayer().getEloRating())
                         .score(stats.getCurrentScore())
                         .buchholz(stats.getBuchholz())
@@ -54,7 +56,13 @@ public class LeaderboardService {
 
         // Assign ranks after sorting
         for (int i = 0; i < leaderboard.size(); i++) {
-            leaderboard.get(i).setRank(i + 1);
+            LeaderboardEntryDTO currentPlayer = leaderboard.get(i);
+            currentPlayer.setRank(i + 1);
+            UUID currentPlayerId = currentPlayer.getPlayerID();
+            PlayerTournamentStats requiredPlayer = statsRepository
+                    .findByPlayerIdAndTournamentTournamentId(currentPlayerId,tournamentId)
+                    .orElseThrow(() -> new RuntimeException("Round not found"));
+            requiredPlayer.setFinalRank(i+1);
         }
 
         return leaderboard;
