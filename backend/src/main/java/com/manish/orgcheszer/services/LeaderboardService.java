@@ -68,12 +68,12 @@ public class LeaderboardService {
         return leaderboard;
     }
 
-    // SWISS sort priority:
-    // 1. Score (desc)
-    // 2. Buchholz Cut-1 (desc)
-    // 3. Buchholz (desc)
-    // 4. Games with Black (desc)
-    // 5. Number of Wins (desc)
+     /**SWISS sort priority:
+     1. Score (desc)
+     2. Buchholz Cut-1 (desc)
+     3. Buchholz (desc)
+     4. Games with Black (desc)
+     5. Number of Wins (desc)**/
     private void sortSwiss(List<LeaderboardEntryDTO> leaderboard) {
         leaderboard.sort(
                 Comparator.comparingDouble(LeaderboardEntryDTO::getScore).reversed()
@@ -84,10 +84,10 @@ public class LeaderboardService {
         );
     }
 
-    // ROUND ROBIN sort priority:
-    // 1. Score (desc)
-    // 2. Sonneborn-Berger (desc)
-    // 3. Number of Wins (desc)
+     /**ROUND ROBIN sort priority:
+     1. Score (desc)
+     2. Sonneborn-Berger (desc)
+     3. Number of Wins (desc)*/
     private void sortRoundRobin(List<LeaderboardEntryDTO> leaderboard) {
         leaderboard.sort(
                 Comparator.comparingDouble(LeaderboardEntryDTO::getScore).reversed()
@@ -96,10 +96,10 @@ public class LeaderboardService {
         );
     }
 
-    // RECALCULATE TIEBREAKERS
-    // Called by MatchmakingService after every result submission.
-    // Recalculates all tiebreaker values for ALL players in the tournament
-    // since every result changes opponent scores which affects everyone's Buchholz.
+     /**RECALCULATE TIEBREAKERS
+     Called by MatchmakingService after every result submission.
+     Recalculates all tiebreaker values for ALL players in the tournament
+     since every result changes opponent scores which affects everyone's Buchholz.*/
     @Transactional
     public void recalculateTiebreakers(UUID tournamentId) {
         List<PlayerTournamentStats> allStats = statsRepository

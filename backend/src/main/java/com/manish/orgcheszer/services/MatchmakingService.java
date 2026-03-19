@@ -36,7 +36,6 @@ public class MatchmakingService {
     private final ApplicationContext              applicationContext;
 
     // PUBLIC METHODS
-
     public RoundPairingsResponse getRoundPairings(UUID tournamentId, int roundNumber) {
         Rounds round = roundsRepository
                 .findByTournamentTournamentIdAndRoundNumber(tournamentId, roundNumber)
@@ -102,7 +101,6 @@ public class MatchmakingService {
             }
         }
 
-        // FIX: validate check-ins BEFORE setting status to ONGOING
         List<UUID> checkedInIds = ticketRepository.findCheckedInPlayerIds(tournamentId);
         if (checkedInIds.isEmpty()) {
             throw new RuntimeException(
@@ -278,14 +276,11 @@ public class MatchmakingService {
         checkAndFinalizeTournament(tournament);
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // PRIVATE METHODS
-    // ─────────────────────────────────────────────────────────────────────────
-
+    // PRIVATE HELPER METHODS
     private void generateAllRoundRobinRounds(Tournament tournament,
                                              List<PlayerStanding> standings,
                                              PairingEngine engine) {
-        // FIX: recalculate rounds based on actual checked-in player count
+        // Rcalculate rounds based on actual checked-in player count
         int actualPlayers = standings.size();
         int actualRounds  = actualPlayers % 2 == 0 ? actualPlayers - 1 : actualPlayers;
 
@@ -451,7 +446,6 @@ public class MatchmakingService {
         };
     }
 
-    // FIX: now accepts checkedInIds to avoid duplicate DB call
     private long checkRemainingPossiblePairs(UUID tournamentId, List<UUID> checkedInIds) {
         List<UUID> playerIds = statsRepository
                 .findByTournamentTournamentIdOrderByCurrentScoreDesc(tournamentId)

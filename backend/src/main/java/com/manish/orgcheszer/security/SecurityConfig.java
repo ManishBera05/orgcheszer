@@ -50,8 +50,6 @@ public class SecurityConfig {
                                 "/api/users/**",
                                 "/error"    // built-in fallback endpoint used to handle errors that occur during request processing
                         ).permitAll()
-//                        .requestMatchers("/api/tournaments/*/players").permitAll()
-                        // Everything else requires authentication
                         .anyRequest().authenticated()
                 )
                 .authenticationProvider(authenticationProvider())

@@ -12,14 +12,14 @@ public class RoundRobinEngineImpl implements PairingEngine {
     // Sentinel UUID for the bye slot when player count is odd
     private static final UUID BYE_SENTINEL = UUID.fromString("00000000-0000-0000-0000-000000000000");
 
-    // Generates ALL rounds upfront using the Berger circle method.
-    //
-    // Returns a flat list of Pairings — each Pairing carries a roundNumber
-    // field so MatchmakingService knows which round each game belongs to.
-    //
-    // For N players:
-    //   - If N is even → N-1 rounds, each with N/2 games
-    //   - If N is odd  → N rounds, each with (N-1)/2 games + 1 bye
+     /**Generates ALL rounds upfront using the Berger circle method.
+
+     Returns a flat list of Pairings — each Pairing carries a roundNumber
+     field so MatchmakingService knows which round each game belongs to.
+
+     For N players:
+       - If N is even → N-1 rounds, each with N/2 games
+       - If N is odd  → N rounds, each with (N-1)/2 games + 1 bye*/
     @Override
     public List<Pairing> generatePairings(List<PlayerStanding> players,
                                           int currentRound,

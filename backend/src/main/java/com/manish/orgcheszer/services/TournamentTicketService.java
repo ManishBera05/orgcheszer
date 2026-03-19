@@ -88,7 +88,7 @@ public class TournamentTicketService {
         ticketRepository.save(ticket);
     }
 
-    // Helpers
+    // HELPERS
     private String player(TournamentTicket ticket) {
         return ticket.getPlayer().getFirstName()
                 + " " + ticket.getPlayer().getLastName();

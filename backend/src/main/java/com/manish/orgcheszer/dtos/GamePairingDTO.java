@@ -1,5 +1,6 @@
 package com.manish.orgcheszer.dtos;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -12,9 +13,24 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 public class GamePairingDTO {
+
+    @Schema(description = "The unique ID of this match")
     private UUID gameId;
+
+    @Schema(description = "Name of the player with White pieces",
+            example = "Carlsen, Magnus")
     private String whiteName;
-    private String blackName; // "BYE" if bye game
-    private int    boardNumber;
-    private String result;    // "PENDING", "WHITE_WINS", "DRAW" etc.
+
+    @Schema(description = "Name of the player with Black pieces. Displays 'BYE' if there is no opponent.",
+            example = "Nakamura, Hikaru")
+    private String blackName;
+
+    @Schema(description = "Physical table number",
+            example = "1")
+    private int boardNumber;
+
+    @Schema(description = "Current state of the game",
+            allowableValues = {"PENDING", "WHITE_WINS", "BLACK_WINS", "DRAW", "BYE"},
+            example = "PENDING")
+    private String result;
 }

@@ -2,6 +2,9 @@ package com.manish.orgcheszer.controllers;
 
 import com.manish.orgcheszer.dtos.StaffKeyResponse;
 import com.manish.orgcheszer.services.StaffKeyService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -18,11 +21,15 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/tournaments")
 @RequiredArgsConstructor
+@Tag(name = "4. Staff Keys",
+        description = "Endpoints for generating and redeeming staff keys")
 public class StaffKeyController {
 
     private final StaffKeyService staffKeyService;
 
-    // Generate keys (organizer only)
+    @Operation(summary = "Generate staff keys",
+            description = "Generates N keys. Organizer only.",
+            security = @SecurityRequirement(name = "bearerAuth"))
     @PostMapping("/{tournamentId}/staff-keys/generate")
     public ResponseEntity<List<String>> generateKeys(
             @PathVariable UUID tournamentId,
@@ -31,14 +38,17 @@ public class StaffKeyController {
                 .body(staffKeyService.generateKeys(tournamentId, numberOfKeys));
     }
 
-    // Redeem a key (staff member i.e. any other user on the platform except the organizer himself or the player of the tournament)
-    @PostMapping("/staff-keys/redeem")
+    @Operation(summary = "Redeem staff key",
+            description = "Logged-in user redeems a key to become staff for a tournament.",
+            security = @SecurityRequirement(name = "bearerAuth"))    @PostMapping("/staff-keys/redeem")
     public ResponseEntity<Void> redeemKey(@RequestParam String keyValue) {
         staffKeyService.redeemKey(keyValue);
         return ResponseEntity.ok().build();
     }
 
-    // View all keys (organizer only)
+    @Operation(summary = "View staff keys",
+            description = "View all keys generated for a tournament. Organizer only.",
+            security = @SecurityRequirement(name = "bearerAuth"))
     @GetMapping("/{tournamentId}/staff-keys")
     public ResponseEntity<List<StaffKeyResponse>> getKeys(
             @PathVariable UUID tournamentId) {

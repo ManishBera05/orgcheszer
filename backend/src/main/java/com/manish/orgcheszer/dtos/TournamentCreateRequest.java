@@ -1,5 +1,6 @@
 package com.manish.orgcheszer.dtos;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -12,13 +13,40 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 public class TournamentCreateRequest {
+
+    @Schema(description = "Official name of the event",
+            example = "Winter Grandmaster Open")
     private String tournamentName;
+
+    @Schema(description = "Date and time the first round begins",
+            example = "2030-01-01T10:00:00")
     private LocalDateTime startDateTime;
+
+    @Schema(description = "Total number of rounds to be played",
+            example = "9")
     private int numberOfRounds;
+
+    @Schema(description = "Maximum player capacity",
+            example = "100")
     private int maxParticipants;
+
+    @Schema(description = "Entry fee",
+            example = "2500")
     private int entryFee;
+
+    @Schema(description = "Information about the tournament",
+            example = "Unrated Swiss tournament with exciting prizes.")
     private String description;
+
+    @Schema(description = "Physical address or online link",
+            example = "Oslo Chess Club")
     private String location;
-    private String timeControl; // e.g "90+30" (FIDE standard)
+
+    @Schema(description = "Standard chess time control format",
+            example = "90+30")
+    private String timeControl;
+
+    @Schema(description = "Format of the tournament. Currently supports SWISS or ROUND_ROBIN",
+            example = "SWISS")
     private String format;
 }

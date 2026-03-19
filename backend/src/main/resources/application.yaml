@@ -25,6 +25,10 @@ springdoc:
   swagger-ui:
     path: /swagger-ui.html
     enabled: true
+    tags-sorter: alpha
+    operations-sorter: method
   api-docs:
     enabled: true
-
+api:
+  contact:
+    email: beramanish.25@gmail.com

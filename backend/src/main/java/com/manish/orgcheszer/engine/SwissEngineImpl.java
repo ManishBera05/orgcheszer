@@ -45,15 +45,15 @@ public class SwissEngineImpl implements PairingEngine {
         }
     }
 
-    // Calls JaVaFo API, captures output stream, parses pairings
-    //
-    // Sample JaVaFo output:
-    //   5          ← round number (first line, we skip it)
-    //   1 6        ← white=1, black=6
-    //   7 2        ← white=7, black=2
-    //   3 8        ← white=3, black=8
-    //   9 4        ← white=9, black=4
-    //   5 10       ← white=5, black=10=
+     /**Calls JaVaFo API, captures output stream, parses pairings
+
+     Sample JaVaFo output:
+       5          ← round number (first line, we skip it)
+       1 6        ← white=1, black=6
+       7 2        ← white=7, black=2
+       3 8        ← white=3, black=8
+       9 4        ← white=9, black=4
+       5 10       ← white=5, black=10=*/
     private List<Pairing> callJavafoAndParse(String trfContent,
                                              Map<Integer, UUID> idToUuidMap) throws Exception {
 
@@ -72,14 +72,14 @@ public class SwissEngineImpl implements PairingEngine {
         return parseJavafoOutput(output, idToUuidMap);
     }
 
-    // Parses JaVaFo output into List<Pairing>
-    //
-    // Output format:
-    //   Line 1    → round number  (skip)
-    //   Line 2+   → "whiteId blackId"
-    //
-    // Bye format: "X 0" where X = bye player's pairing ID, 0 = no opponent
-    //   e.g. "5 0" means player 5 has a bye
+     /**Parses JaVaFo output into List<Pairing>
+
+     Output format:
+       Line 1    → round number  (skip)
+       Line 2+   → "whiteId blackId"
+
+     Bye format: "X 0" where X = bye player's pairing ID, 0 = no opponent
+       e.g. "5 0" means player 5 has a bye*/
     private List<Pairing> parseJavafoOutput(String output,
                                             Map<Integer, UUID> idToUuidMap) {
         List<Pairing> pairings = new ArrayList<>();
