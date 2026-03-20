@@ -1,0 +1,14 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:testdb
+    driver-class-name: org.h2.Driver
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    database-platform: org.hibernate.dialect.H2Dialect
+application:
+  security:
+    jwt:
+      #Dummy key for testing
+      secret-key: 1111111111111111111111111111111111111111111111111111111111111111
+      expiration: 360000

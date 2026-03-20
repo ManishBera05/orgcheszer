@@ -23,7 +23,7 @@ public class LeaderboardService {
 
     // GET LEADERBOARD
     // Returns sorted standings for a tournament at any point in time
-    @Transactional(readOnly = true) // Still good practice for read operations
+    @Transactional(readOnly = true)
     public List<LeaderboardEntryDTO> getLeaderboard(UUID tournamentId) {
         Tournament tournament = tournamentRepository.findById(tournamentId)
                 .orElseThrow(() -> new RuntimeException("Tournament not found"));

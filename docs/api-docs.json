@@ -1,0 +1,921 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "OrgCheszer API",
+    "description": "REST API for the OrgCheszer FIDE-compliant Chess Tournament Manager.",
+    "contact": { "name": "Manish", "email": "beramanish.25@gmail.com" },
+    "version": "1.0"
+  },
+  "servers": [
+    { "url": "http://localhost:8080", "description": "Generated server url" }
+  ],
+  "tags": [
+    {
+      "name": "3. Matchmaking & Gameplay",
+      "description": "Endpoints for generating pairings and submitting game results"
+    },
+    {
+      "name": "2. Tournament Management",
+      "description": "Endpoints for creating, viewing, and managing tournaments"
+    },
+    {
+      "name": "1. Authentication",
+      "description": "Endpoints for User Registration and Login"
+    },
+    {
+      "name": "7. User Profiles",
+      "description": "Public endpoints to view user tournament history"
+    },
+    {
+      "name": "6. Leaderboard",
+      "description": "Endpoint to view tournament standings"
+    },
+    {
+      "name": "4. Staff Keys",
+      "description": "Endpoints for generating and redeeming staff keys"
+    },
+    {
+      "name": "5. Tickets & Check-in",
+      "description": "Endpoints for QR tickets and player check-ins"
+    }
+  ],
+  "paths": {
+    "/api/tournaments/{tournamentId}": {
+      "get": {
+        "tags": ["2. Tournament Management"],
+        "summary": "Get specific tournament",
+        "description": "Public endpoint to view tournament details.",
+        "operationId": "getTournament",
+        "parameters": [
+          {
+            "name": "tournamentId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": { "$ref": "#/components/schemas/TournamentResponse" }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": ["2. Tournament Management"],
+        "summary": "Update tournament details",
+        "description": "Only the specific Organizer of this tournament can update it.",
+        "operationId": "updateTournament",
+        "parameters": [
+          {
+            "name": "tournamentId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TournamentCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": { "$ref": "#/components/schemas/TournamentResponse" }
+              }
+            }
+          }
+        },
+        "security": [{ "bearerAuth": [] }]
+      }
+    },
+    "/api/tournaments": {
+      "get": {
+        "tags": ["2. Tournament Management"],
+        "summary": "Get all public tournaments",
+        "description": "Public endpoint to view all tournaments.",
+        "operationId": "getAllTournaments",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/TournamentResponse" }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["2. Tournament Management"],
+        "summary": "Create a new tournament",
+        "description": "Any logged-in user can create a tournament. They automatically become the Organizer.",
+        "operationId": "createTournament",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TournamentCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": { "$ref": "#/components/schemas/TournamentResponse" }
+              }
+            }
+          }
+        },
+        "security": [{ "bearerAuth": [] }]
+      }
+    },
+    "/api/tournaments/{tournamentId}/tickets/checkin": {
+      "post": {
+        "tags": ["5. Tickets & Check-in"],
+        "summary": "Check in player",
+        "description": "Staff/Organizer scans a token to mark a player as physically present.",
+        "operationId": "checkIn",
+        "parameters": [
+          {
+            "name": "tournamentId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": { "*/*": { "schema": { "type": "string" } } }
+          }
+        },
+        "security": [{ "bearerAuth": [] }]
+      }
+    },
+    "/api/tournaments/{tournamentId}/staff-keys/generate": {
+      "post": {
+        "tags": ["4. Staff Keys"],
+        "summary": "Generate staff keys",
+        "description": "Generates N keys. Organizer only.",
+        "operationId": "generateKeys",
+        "parameters": [
+          {
+            "name": "tournamentId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "numberOfKeys",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "integer", "format": "int32" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": { "type": "array", "items": { "type": "string" } }
+              }
+            }
+          }
+        },
+        "security": [{ "bearerAuth": [] }]
+      }
+    },
+    "/api/tournaments/{tournamentId}/rounds/generate": {
+      "post": {
+        "tags": ["3. Matchmaking & Gameplay"],
+        "summary": "Generate next round",
+        "description": "Organizer triggers API to generate pairings. Organizer only.",
+        "operationId": "generateNextRound",
+        "parameters": [
+          {
+            "name": "tournamentId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoundPairingsResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [{ "bearerAuth": [] }]
+      }
+    },
+    "/api/tournaments/{tournamentId}/register": {
+      "post": {
+        "tags": ["2. Tournament Management"],
+        "summary": "Register for tournament",
+        "description": "Registers the currently logged-in user as a player in the tournament.",
+        "operationId": "registerPlayer",
+        "parameters": [
+          {
+            "name": "tournamentId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": { "200": { "description": "OK" } },
+        "security": [{ "bearerAuth": [] }]
+      }
+    },
+    "/api/tournaments/staff-keys/redeem": {
+      "post": {
+        "tags": ["4. Staff Keys"],
+        "summary": "Redeem staff key",
+        "description": "Logged-in user redeems a key to become staff for a tournament.",
+        "operationId": "redeemKey",
+        "parameters": [
+          {
+            "name": "keyValue",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": { "200": { "description": "OK" } },
+        "security": [{ "bearerAuth": [] }]
+      }
+    },
+    "/api/auth/register": {
+      "post": {
+        "tags": ["1. Authentication"],
+        "summary": "Register a new user",
+        "description": "Creates a new user account. No token required.",
+        "operationId": "register",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/RegisterRequest" }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": { "$ref": "#/components/schemas/AuthResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/login": {
+      "post": {
+        "tags": ["1. Authentication"],
+        "summary": "Login user",
+        "description": "Authenticates a user and returns a JWT token. No token required.",
+        "operationId": "login",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/LoginRequest" }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": { "$ref": "#/components/schemas/AuthResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tournaments/{tournamentId}/games/{gameId}/result": {
+      "patch": {
+        "tags": ["3. Matchmaking & Gameplay"],
+        "summary": "Submit game result",
+        "description": "Staff or Organizer submits a match result.",
+        "operationId": "submitResult",
+        "parameters": [
+          {
+            "name": "tournamentId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "gameId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "result",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": ["PENDING", "WHITE_WINS", "BLACK_WINS", "DRAW", "BYE"]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": { "*/*": { "schema": { "type": "string" } } }
+          }
+        },
+        "security": [{ "bearerAuth": [] }]
+      }
+    },
+    "/api/tournaments/{tournamentId}/cancel": {
+      "patch": {
+        "tags": ["2. Tournament Management"],
+        "summary": "Cancel a tournament",
+        "description": "Only the specific Organizer can cancel it.",
+        "operationId": "cancelTournament",
+        "parameters": [
+          {
+            "name": "tournamentId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": { "200": { "description": "OK" } },
+        "security": [{ "bearerAuth": [] }]
+      }
+    },
+    "/api/users/{userId}": {
+      "get": {
+        "tags": ["7. User Profiles"],
+        "summary": "Get user's tournament history",
+        "description": "Public endpoint to view all tournaments a user has organized, staffed, or played in. No token required.",
+        "operationId": "getUserTournaments",
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/UserTournamentSummaryDTO"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/users/{userId}/tournament/{tournamentId}": {
+      "get": {
+        "tags": ["7. User Profiles"],
+        "summary": "Get user's specific tournament details",
+        "description": "Public endpoint to view a user's role and stats in a specific tournament. No token required.",
+        "operationId": "getUserTournamentStats",
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "tournamentId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserTournamentStatsDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tournaments/{tournamentId}/staff-keys": {
+      "get": {
+        "tags": ["4. Staff Keys"],
+        "summary": "View staff keys",
+        "description": "View all keys generated for a tournament. Organizer only.",
+        "operationId": "getKeys",
+        "parameters": [
+          {
+            "name": "tournamentId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/StaffKeyResponse" }
+                }
+              }
+            }
+          }
+        },
+        "security": [{ "bearerAuth": [] }]
+      }
+    },
+    "/api/tournaments/{tournamentId}/rounds/{roundNumber}/pairings": {
+      "get": {
+        "tags": ["3. Matchmaking & Gameplay"],
+        "summary": "Get round pairings",
+        "description": "Public endpoint to view pairings for a specific round.",
+        "operationId": "getRoundPairings",
+        "parameters": [
+          {
+            "name": "tournamentId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "roundNumber",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer", "format": "int32" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoundPairingsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tournaments/{tournamentId}/players": {
+      "get": {
+        "tags": ["2. Tournament Management"],
+        "summary": "Get registered players",
+        "description": "Public endpoint to see who is playing in a tournament.",
+        "operationId": "getTournamentPlayers",
+        "parameters": [
+          {
+            "name": "tournamentId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TournamentPlayerDTO"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tournaments/{tournamentId}/my-ticket": {
+      "get": {
+        "tags": ["5. Tickets & Check-in"],
+        "summary": "Get my ticket token",
+        "description": "Registered player fetches their token to generate a QR code.",
+        "operationId": "getMyTicket",
+        "parameters": [
+          {
+            "name": "tournamentId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": { "*/*": { "schema": { "type": "string" } } }
+          }
+        },
+        "security": [{ "bearerAuth": [] }]
+      }
+    },
+    "/api/tournaments/{tournamentId}/leaderboard": {
+      "get": {
+        "tags": ["6. Leaderboard"],
+        "summary": "Get live leaderboard",
+        "description": "Public endpoint returning players sorted by FIDE Tiebreakers.",
+        "operationId": "getLeaderboard",
+        "parameters": [
+          {
+            "name": "tournamentId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/LeaderboardEntryDTO"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tournaments/my-tournaments": {
+      "get": {
+        "tags": ["2. Tournament Management"],
+        "summary": "Get my organized tournaments",
+        "description": "Fetches tournaments where the currently logged-in user is the Organizer.",
+        "operationId": "getMyTournaments",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/TournamentResponse" }
+                }
+              }
+            }
+          }
+        },
+        "security": [{ "bearerAuth": [] }]
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "TournamentCreateRequest": {
+        "type": "object",
+        "properties": {
+          "tournamentName": {
+            "type": "string",
+            "description": "Official name of the event",
+            "example": "Winter Grandmaster Open"
+          },
+          "startDateTime": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Date and time the first round begins",
+            "example": "2030-01-01T10:00:00"
+          },
+          "numberOfRounds": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Total number of rounds to be played",
+            "example": 9
+          },
+          "maxParticipants": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Maximum player capacity",
+            "example": 100
+          },
+          "entryFee": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Entry fee",
+            "example": 2500
+          },
+          "description": {
+            "type": "string",
+            "description": "Information about the tournament",
+            "example": "Unrated Swiss tournament with exciting prizes."
+          },
+          "location": {
+            "type": "string",
+            "description": "Physical address or online link",
+            "example": "Oslo Chess Club"
+          },
+          "timeControl": {
+            "type": "string",
+            "description": "Standard chess time control format",
+            "example": "90+30"
+          },
+          "format": {
+            "type": "string",
+            "description": "Format of the tournament. Currently supports SWISS or ROUND_ROBIN",
+            "example": "SWISS"
+          }
+        }
+      },
+      "TournamentResponse": {
+        "type": "object",
+        "properties": {
+          "tournamentId": { "type": "string", "format": "uuid" },
+          "tournamentName": { "type": "string" },
+          "startDateTime": { "type": "string", "format": "date-time" },
+          "numberOfRounds": { "type": "integer", "format": "int32" },
+          "maxParticipants": { "type": "integer", "format": "int32" },
+          "entryFee": { "type": "integer", "format": "int32" },
+          "description": { "type": "string" },
+          "location": { "type": "string" },
+          "timeControl": { "type": "string" },
+          "format": { "type": "string" },
+          "organizerName": { "type": "string" },
+          "organizerPhoneNumber": { "type": "string" },
+          "currentNumberOfParticipants": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "status": { "type": "string" }
+        }
+      },
+      "GamePairingDTO": {
+        "type": "object",
+        "properties": {
+          "gameId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The unique ID of this match"
+          },
+          "whiteName": {
+            "type": "string",
+            "description": "Name of the player with White pieces",
+            "example": "Carlsen, Magnus"
+          },
+          "blackName": {
+            "type": "string",
+            "description": "Name of the player with Black pieces. Displays 'BYE' if there is no opponent.",
+            "example": "Nakamura, Hikaru"
+          },
+          "boardNumber": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Physical table number",
+            "example": 1
+          },
+          "result": {
+            "type": "string",
+            "description": "Current state of the game",
+            "enum": ["PENDING", "WHITE_WINS", "BLACK_WINS", "DRAW", "BYE"],
+            "example": "PENDING"
+          }
+        }
+      },
+      "RoundPairingsResponse": {
+        "type": "object",
+        "properties": {
+          "roundNumber": { "type": "integer", "format": "int32" },
+          "pairings": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/GamePairingDTO" }
+          }
+        }
+      },
+      "RegisterRequest": {
+        "type": "object",
+        "properties": {
+          "firstName": {
+            "type": "string",
+            "description": "Player's first name",
+            "example": "Magnus"
+          },
+          "lastName": {
+            "type": "string",
+            "description": "Player's last name",
+            "example": "Carlsen"
+          },
+          "email": {
+            "type": "string",
+            "description": "Valid email address for login",
+            "example": "magnus@example.com"
+          },
+          "password": {
+            "type": "string",
+            "description": "Strong password",
+            "example": "SecurePass123!"
+          },
+          "mobileNo": {
+            "type": "string",
+            "description": "Contact number",
+            "example": "123456789"
+          },
+          "dob": {
+            "type": "string",
+            "format": "date",
+            "description": "Date of Birth",
+            "example": "2000-01-01"
+          },
+          "fideId": {
+            "type": "string",
+            "description": "Official FIDE ID (Optional)",
+            "example": "1503014"
+          }
+        }
+      },
+      "AuthResponse": {
+        "type": "object",
+        "properties": {
+          "token": { "type": "string" },
+          "message": { "type": "string" }
+        }
+      },
+      "LoginRequest": {
+        "type": "object",
+        "properties": {
+          "email": { "type": "string" },
+          "password": { "type": "string" }
+        }
+      },
+      "UserTournamentSummaryDTO": {
+        "type": "object",
+        "properties": {
+          "tournamentId": { "type": "string", "format": "uuid" },
+          "tournamentName": { "type": "string" },
+          "format": { "type": "string" },
+          "status": { "type": "string" },
+          "role": { "type": "string" }
+        }
+      },
+      "OpponentDTO": {
+        "type": "object",
+        "properties": {
+          "roundNumber": { "type": "integer", "format": "int32" },
+          "opponentId": { "type": "string", "format": "uuid" },
+          "opponentName": { "type": "string" },
+          "result": { "type": "string" }
+        }
+      },
+      "UserTournamentStatsDTO": {
+        "type": "object",
+        "properties": {
+          "tournamentId": { "type": "string", "format": "uuid" },
+          "tournamentName": { "type": "string" },
+          "role": { "type": "string" },
+          "finalRank": { "type": "integer", "format": "int32" },
+          "currentScore": { "type": "number", "format": "double" },
+          "buchholz": { "type": "number", "format": "double" },
+          "buchholzCut1": { "type": "number", "format": "double" },
+          "sonnenbornBerger": { "type": "number", "format": "double" },
+          "gamesPlayed": { "type": "integer", "format": "int32" },
+          "wins": { "type": "integer", "format": "int32" },
+          "losses": { "type": "integer", "format": "int32" },
+          "draws": { "type": "integer", "format": "int32" },
+          "byesReceived": { "type": "integer", "format": "int32" },
+          "opponents": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/OpponentDTO" }
+          }
+        }
+      },
+      "StaffKeyResponse": {
+        "type": "object",
+        "properties": {
+          "keyValue": { "type": "string" },
+          "used": { "type": "boolean" },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "usedAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "TournamentPlayerDTO": {
+        "type": "object",
+        "properties": {
+          "userId": { "type": "string", "format": "uuid" },
+          "firstName": { "type": "string" },
+          "lastName": { "type": "string" },
+          "eloRating": { "type": "integer", "format": "int32" },
+          "fideId": { "type": "string" },
+          "checkInStatus": { "type": "string" }
+        }
+      },
+      "LeaderboardEntryDTO": {
+        "type": "object",
+        "properties": {
+          "rank": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Current standing in the tournament",
+            "example": 1
+          },
+          "playerID": { "type": "string", "format": "uuid" },
+          "playerName": { "type": "string", "example": "Carlsen, Magnus" },
+          "fideId": { "type": "string", "example": "1503014" },
+          "eloRating": {
+            "type": "integer",
+            "format": "int32",
+            "example": 2830
+          },
+          "score": {
+            "type": "number",
+            "format": "double",
+            "description": "Total points scored (Win = 1, Draw = 0.5, Bye = 1)",
+            "example": "4.5"
+          },
+          "buchholz": {
+            "type": "number",
+            "format": "double",
+            "description": "Tiebreaker 1: Sum of all opponents' scores",
+            "example": "12.5"
+          },
+          "buchholzCut1": {
+            "type": "number",
+            "format": "double",
+            "description": "Tiebreaker 2: Buchholz minus the lowest scoring opponent",
+            "example": "11.0"
+          },
+          "sonnebornBerger": {
+            "type": "number",
+            "format": "double",
+            "description": "Tiebreaker 3: Sum of defeated opponents' scores + half of drawn opponents' scores",
+            "example": "9.25"
+          },
+          "gamesWithBlack": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Number of times played with Black pieces (used for color balancing)",
+            "example": 2
+          },
+          "numberOfWins": { "type": "integer", "format": "int32", "example": 4 }
+        }
+      }
+    },
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "description": "JWT auth description. Please insert JWT token",
+        "in": "header",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    }
+  }
+}
