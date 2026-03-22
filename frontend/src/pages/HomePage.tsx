@@ -490,7 +490,7 @@ export default function HomePage() {
               <StatItem
                 value="—"
                 label="Active tournaments →"
-                linkTo="/tournaments"
+                linkTo="/tournaments?tab=live"
               />
               <StatItem value="—" label="Total games played" />
             </div>
