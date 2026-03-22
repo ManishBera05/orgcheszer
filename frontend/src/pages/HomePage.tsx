@@ -1,24 +1,11 @@
 import { useNavigate, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import {
-  Trophy,
-  Plus,
-  ArrowRight,
-  MapPin,
-  Clock,
-  Users,
-  CalendarDays,
-  ChevronRight,
-} from "lucide-react";
+import { Trophy, Plus, ArrowRight, ChevronRight } from "lucide-react";
 import { getAllTournaments } from "../api/tournaments";
 import { useAuth } from "../hooks/useAuth";
-import {
-  formatDate,
-  formatEntryFee,
-  statusClass,
-  truncate,
-} from "../lib/utils";
+
 import type { TournamentResponse } from "../types";
+import TournamentCard from "../components/TournamentCard";
 
 /* ─── Decorative board corner ─────────────────────────────── */
 function BoardCorner({ size = 220 }: { size?: number }) {
@@ -107,6 +94,7 @@ function StatItem({
           background: "var(--bg-surface)",
           display: "flex",
           flexDirection: "column",
+          position: "relative",
           transition:
             "border-color var(--transition-normal), box-shadow var(--transition-normal), transform var(--transition-normal)",
           cursor: "pointer",
@@ -124,6 +112,20 @@ function StatItem({
           el.style.transform = "translateY(0)";
         }}
       >
+        {/* Live indicator dot */}
+        <span
+          style={{
+            position: "absolute",
+            top: "10px",
+            right: "10px",
+            width: "8px",
+            height: "8px",
+            borderRadius: "50%",
+            background: "var(--success)",
+            animation: "liveDot 1.8s ease-in-out infinite",
+            boxShadow: "0 0 0 2px var(--bg-surface)",
+          }}
+        />
         {inner}
       </Link>
     );
@@ -142,218 +144,6 @@ function StatItem({
     >
       {inner}
     </div>
-  );
-}
-
-/* ─── Tournament card ─────────────────────────────────────── */
-function TournamentCard({
-  t,
-  index,
-}: {
-  t: TournamentResponse;
-  index: number;
-}) {
-  return (
-    <Link
-      to={`/tournaments/${t.tournamentId}`}
-      style={{
-        textDecoration: "none",
-        display: "flex",
-        flexDirection: "column",
-        background: "var(--bg-surface)",
-        border: "1px solid var(--border)",
-        borderRadius: "var(--radius-xl)",
-        overflow: "hidden",
-        opacity: 0,
-        animation: "cardSlideUp 400ms ease forwards",
-        animationDelay: `${index * 100}ms`,
-        transition:
-          "border-color var(--transition-normal), box-shadow var(--transition-normal), transform var(--transition-normal)",
-      }}
-      onMouseEnter={(e) => {
-        const el = e.currentTarget as HTMLAnchorElement;
-        el.style.borderColor = "var(--border-strong)";
-        el.style.boxShadow = "var(--shadow-md)";
-        el.style.transform = "translateY(-3px)";
-      }}
-      onMouseLeave={(e) => {
-        const el = e.currentTarget as HTMLAnchorElement;
-        el.style.borderColor = "var(--border)";
-        el.style.boxShadow = "none";
-        el.style.transform = "translateY(0)";
-      }}
-    >
-      {/* Card header accent */}
-      <div
-        style={{
-          height: "3px",
-          background: `linear-gradient(90deg, var(--accent-cta), var(--choc-400))`,
-        }}
-      />
-
-      <div
-        style={{
-          padding: "1.375rem 1.5rem",
-          display: "flex",
-          flexDirection: "column",
-          gap: "1rem",
-          flex: 1,
-        }}
-      >
-        {/* Top row */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "flex-start",
-            justifyContent: "space-between",
-            gap: "0.75rem",
-          }}
-        >
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <h3
-              style={{
-                fontSize: "1rem",
-                fontWeight: 600,
-                color: "var(--text-primary)",
-                margin: 0,
-                lineHeight: 1.35,
-                letterSpacing: "-0.01em",
-                whiteSpace: "nowrap",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-              }}
-            >
-              {t.tournamentName}
-            </h3>
-            <p
-              style={{
-                fontSize: "0.8125rem",
-                color: "var(--text-muted)",
-                margin: "0.25rem 0 0",
-              }}
-            >
-              by {t.organizerName}
-            </p>
-          </div>
-          <span
-            className={`status-badge ${statusClass(t.status)}`}
-            style={{ flexShrink: 0 }}
-          >
-            {t.status.toLowerCase()}
-          </span>
-        </div>
-
-        {/* Description */}
-        {t.description && (
-          <p
-            style={{
-              fontSize: "0.875rem",
-              color: "var(--text-secondary)",
-              margin: 0,
-              lineHeight: 1.6,
-            }}
-          >
-            {truncate(t.description, 90)}
-          </p>
-        )}
-
-        {/* Meta grid */}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr",
-            gap: "0.625rem 1rem",
-          }}
-        >
-          {[
-            {
-              icon: <CalendarDays size={13} />,
-              text: formatDate(t.startDateTime),
-            },
-            { icon: <Clock size={13} />, text: t.timeControl },
-            { icon: <MapPin size={13} />, text: truncate(t.location, 22) },
-            {
-              icon: <Users size={13} />,
-              text: `${t.currentNumberOfParticipants} / ${t.maxParticipants}`,
-            },
-          ].map((item, i) => (
-            <div
-              key={i}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "0.375rem",
-                color: "var(--text-muted)",
-                fontSize: "0.8125rem",
-              }}
-            >
-              <span style={{ color: "var(--camel-600)", flexShrink: 0 }}>
-                {item.icon}
-              </span>
-              <span
-                style={{
-                  whiteSpace: "nowrap",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                }}
-              >
-                {item.text}
-              </span>
-            </div>
-          ))}
-        </div>
-
-        {/* Footer */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            paddingTop: "0.875rem",
-            borderTop: "1px solid var(--border-subtle)",
-            marginTop: "auto",
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-            <span
-              style={{
-                fontSize: "0.75rem",
-                fontWeight: 600,
-                color: "var(--text-muted)",
-                background: "var(--bg-elevated)",
-                padding: "0.2rem 0.6rem",
-                borderRadius: "4px",
-                letterSpacing: "0.03em",
-                textTransform: "uppercase",
-              }}
-            >
-              {t.format}
-            </span>
-            <span
-              style={{
-                fontSize: "0.75rem",
-                fontWeight: 600,
-                color: "var(--text-muted)",
-                background: "var(--bg-elevated)",
-                padding: "0.2rem 0.6rem",
-                borderRadius: "4px",
-              }}
-            >
-              {t.numberOfRounds}R
-            </span>
-          </div>
-          <span
-            style={{
-              fontSize: "0.875rem",
-              fontWeight: 600,
-              color: "var(--accent-cta)",
-            }}
-          >
-            {formatEntryFee(t.entryFee)}
-          </span>
-        </div>
-      </div>
-    </Link>
   );
 }
 
@@ -429,6 +219,8 @@ export default function HomePage() {
         @keyframes squarePop    { from { opacity:0; transform:scale(0.5); } to { opacity:0.22; transform:scale(1); } }
         @keyframes heroFadeUp   { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
         @keyframes cardSlideUp  { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
+        @keyframes pulse   { 0%,100%{opacity:1} 50%{opacity:0.4} }
+        @keyframes liveDot { 0%,100%{transform:scale(1);opacity:1} 50%{transform:scale(1.5);opacity:0.4} }
         @keyframes pieceDrift   { 0%,100% { transform:translateY(0) rotate(-2deg); } 50% { transform:translateY(-10px) rotate(-2deg); } }
 
         .home-hero {
@@ -458,7 +250,7 @@ export default function HomePage() {
         }
         .stats-grid {
           display: grid;
-          grid-template-columns: repeat(3, 1fr);
+          grid-template-columns: repeat(2, 1fr);
           gap: 0.75rem;
         }
         .cta-row {
@@ -533,8 +325,8 @@ export default function HomePage() {
         /* ── Responsive ── */
         @media (max-width: 960px) {
           .home-hero-inner    { grid-template-columns: 1fr; gap: 2.5rem; padding-top: 0; }
-          .hero-right         { order: -1; }
-          .stats-grid         { grid-template-columns: repeat(3, 1fr); }
+          .hero-left          { order: -1; }
+          .stats-grid         { grid-template-columns: repeat(2, 1fr); }
           .board-deco         { display: none; }
           .home-hero          { padding: 3rem 0 3rem; }
           .tournaments-grid   { grid-template-columns: repeat(2, 1fr); }
@@ -700,6 +492,7 @@ export default function HomePage() {
                 label="Active tournaments →"
                 linkTo="/tournaments"
               />
+              <StatItem value="—" label="Total games played" />
             </div>
 
             <p
@@ -818,6 +611,7 @@ export default function HomePage() {
 
       {/* ══════════ FEATURE HIGHLIGHTS ══════════ */}
       <section
+        id="features"
         style={{
           padding: "4rem 0 5rem",
           borderTop: "1px solid var(--border-subtle)",

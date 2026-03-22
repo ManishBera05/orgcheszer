@@ -18,6 +18,7 @@ const OrganizerDashboardPage = lazy(
 );
 const StaffPanelPage = lazy(() => import("./pages/StaffPanelPage"));
 const ProfilePage = lazy(() => import("./pages/ProfilePage"));
+const ContactPage = lazy(() => import("./pages/ContactPage"));
 
 /* ─── Page-level loading fallback ────────────────────────── */
 function PageLoader() {
@@ -136,6 +137,9 @@ export default function App() {
               </ProtectedRoute>
             }
           />
+
+          {/* Public info pages */}
+          <Route path="contact" element={<ContactPage />} />
 
           {/* 404 */}
           <Route path="*" element={<Navigate to="/" replace />} />
