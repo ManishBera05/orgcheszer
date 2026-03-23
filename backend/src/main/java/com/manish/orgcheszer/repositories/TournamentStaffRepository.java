@@ -1,6 +1,8 @@
 package com.manish.orgcheszer.repositories;
 
 import com.manish.orgcheszer.entities.TournamentStaff;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -13,4 +15,6 @@ public interface TournamentStaffRepository extends JpaRepository<TournamentStaff
     boolean existsByUserIdAndTournamentTournamentId(UUID userId, UUID tournamentId);  // role check
     List<TournamentStaff> findByUserId(UUID userId);
     Optional<TournamentStaff> findByUserIdAndTournamentTournamentId(UUID userId, UUID tournamentId);
+    Page<TournamentStaff> findByUserId(UUID userId, Pageable pageable);
+    long countByUserId(UUID userId);
 }

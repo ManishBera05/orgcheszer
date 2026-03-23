@@ -73,6 +73,9 @@ public class Tournament {
     @OneToMany(mappedBy = "tournament")
     private List<Rounds> roundsPlayed;
 
+    @Column(name = "is_demo", nullable = false)
+    private boolean isDemo = false;
+
     @ManyToMany
     @JoinTable(
             name = "tournament_players", // Name of the join table

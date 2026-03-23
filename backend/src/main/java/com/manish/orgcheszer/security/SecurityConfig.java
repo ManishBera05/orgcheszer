@@ -27,6 +27,7 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
+                .cors(cors -> cors.disable())
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -48,6 +49,7 @@ public class SecurityConfig {
                                 "/v3/api-docs/**",
                                 "/v3/api-docs",
                                 "/api/users/**",
+                                "/api/stats",
                                 "/error"    // built-in fallback endpoint used to handle errors that occur during request processing
                         ).permitAll()
                         .anyRequest().authenticated()
