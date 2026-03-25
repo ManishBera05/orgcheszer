@@ -23,7 +23,8 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/users")
 @RequiredArgsConstructor
-@Tag(name = "7. User Profiles", description = "Public endpoints to view user tournament history")
+@Tag(name = "7. User Profiles",
+        description = "Public endpoints to view user tournament history")
 public class UserController {
 
     private final UserService userService;
@@ -36,9 +37,8 @@ public class UserController {
         return ResponseEntity.ok(userService.getPublicProfile(userId));
     }
 
-    // ── Private: current user's full history with optional role filter ─────────
     @Operation(summary = "Gets user's detailed profile",
-            description = "Shows which tournament participated along with the roles and opponents played against.",
+            description = "Private endpoint that shows which tournament participated along with the roles and opponents played against.",
             security = @SecurityRequirement(name = "bearerAuth"))
     @GetMapping("/me")
     public ResponseEntity<Page<MyTournamentDTO>> getMyTournaments(

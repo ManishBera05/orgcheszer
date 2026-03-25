@@ -59,6 +59,10 @@ public class StaffKeyService {
             throw new RuntimeException("Cannot generate keys for a cancelled or completed tournament");
         }
 
+        if(staffKeyRepository.findByTournamentTournamentId(tournamentId).size() + numberOfKeys > 50){
+            throw new RuntimeException("Cannot create more than 50 staffs for a single tournament");
+        }
+
         List<String> keys = new ArrayList<>();
 
         for (int i = 0; i < numberOfKeys; i++) {

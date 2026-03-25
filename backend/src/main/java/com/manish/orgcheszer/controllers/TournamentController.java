@@ -82,14 +82,6 @@ public class TournamentController {
         tournamentService.cancelTournament(tournamentId);
         return ResponseEntity.noContent().build();
     }
-    // No need anymore since UserController /me does the same job in the params
-//    @Operation(summary = "Get my organized tournaments",
-//            description = "Fetches tournaments where the currently logged-in user is the Organizer.",
-//            security = @SecurityRequirement(name = "bearerAuth"))
-//    @GetMapping("/my-tournaments")
-//    public ResponseEntity<List<TournamentResponse>> getMyTournaments() {
-//        return ResponseEntity.ok(tournamentService.getMyTournaments());
-//    }
 
     // View pending requests (organizer only)
     @Operation(summary = "Shows the users requesting to join the tournament",
@@ -137,9 +129,9 @@ public class TournamentController {
             description = "Registers the currently logged-in user as a player in the tournament.",
             security = @SecurityRequirement(name = "bearerAuth"))
     @PostMapping("/{tournamentId}/register")
-    public ResponseEntity<Void> registerPlayer(
+    public ResponseEntity<RegistrationRequestDTO> registerPlayer(
             @PathVariable UUID tournamentId) {
-        tournamentService.registerPlayer(tournamentId);
-        return ResponseEntity.status(HttpStatus.CREATED).build();
+        RegistrationRequestDTO registrationRequestDTO = tournamentService.registerPlayer(tournamentId);
+        return ResponseEntity.status(HttpStatus.CREATED).body(registrationRequestDTO);
     }
 }

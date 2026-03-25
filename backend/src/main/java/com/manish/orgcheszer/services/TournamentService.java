@@ -162,7 +162,7 @@ public class TournamentService {
         tournamentRepository.save(tournament);
     }
 
-    public void registerPlayer(UUID tournamentId) {
+    public RegistrationRequestDTO registerPlayer(UUID tournamentId) {
         Users currentUser = getCurrentUser();
         Tournament tournament = tournamentRepository.findById(tournamentId)
                 .orElseThrow(() -> new RuntimeException("Tournament not found"));
@@ -191,10 +191,10 @@ public class TournamentService {
             if (tournament.getPlayers().size() >= tournament.getMaxParticipants()) {
                 throw new RuntimeException("Tournament is full");
             }
-            addPlayerToTournament(currentUser, tournament);
+            return addPlayerToTournament(currentUser, tournament);
         } else {
             // ── PAID TOURNAMENT: goes through request/approval flow ────────────
-            submitRegistrationRequest(currentUser, tournament);
+            return submitRegistrationRequest(currentUser, tournament);
         }
 
         // Add to players list
@@ -218,7 +218,7 @@ public class TournamentService {
 
     // SUBMIT REGISTRATION REQUEST (paid tournaments only)
 // ─────────────────────────────────────────────────────────────────────────────
-    private void submitRegistrationRequest(Users player, Tournament tournament) {
+    private RegistrationRequestDTO submitRegistrationRequest(Users player, Tournament tournament) {
         UUID tournamentId = tournament.getTournamentId();
 
         // Block duplicate pending requests
@@ -249,6 +249,14 @@ public class TournamentService {
         request.setStatus(RegistrationRequestStatus.PENDING);
         request.setRequestedAt(LocalDateTime.now());
         registrationRequestRepository.save(request);
+        return RegistrationRequestDTO.builder()
+                .requestedAt(LocalDateTime.now())
+                .playerEloRating(player.getEloRating())
+                .playerId(player.getId())
+                .playerName(player.getFirstName() + " " + player.getLastName())
+                .playerFideId(player.getFideId())
+                .requestId(request.getId())
+                .build();
     }
 
     // GET PENDING REQUESTS (organizer only)
@@ -490,7 +498,7 @@ public class TournamentService {
     // HELPER — shared by free tournament flow and approval flow
     // Creates stats, adds to players list, issues ticket
     // ─────────────────────────────────────────────────────────────────────────────
-    private void addPlayerToTournament(Users player, Tournament tournament) {
+    private RegistrationRequestDTO addPlayerToTournament(Users player, Tournament tournament) {
         UUID tournamentId = tournament.getTournamentId();
 
         // Assign pairingId
@@ -508,5 +516,13 @@ public class TournamentService {
 
         tournamentRepository.save(tournament);
         tournamentTicketService.issueTicket(player, tournament);
+
+        return RegistrationRequestDTO.builder()
+                .requestedAt(LocalDateTime.now())
+                .playerEloRating(player.getEloRating())
+                .playerId(player.getId())
+                .playerName(player.getFirstName() + " " + player.getLastName())
+                .playerFideId(player.getFideId())
+                .build();
     }
 }

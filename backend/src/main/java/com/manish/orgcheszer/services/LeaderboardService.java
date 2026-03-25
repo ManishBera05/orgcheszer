@@ -41,6 +41,7 @@ public class LeaderboardService {
                         .playerID(stats.getPlayer().getId())
                         .eloRating(stats.getPlayer().getEloRating())
                         .score(stats.getCurrentScore())
+                        .totalGamesPlayed(stats.getGamesWithBlack()+stats.getGamesWithWhite()+stats.getByesReceived())
                         .buchholz(stats.getBuchholz())
                         .buchholzCut1(stats.getBuchholzCut1())
                         .sonnebornBerger(stats.getSonnebornBerger())

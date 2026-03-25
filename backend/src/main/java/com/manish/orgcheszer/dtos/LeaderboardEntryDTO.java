@@ -35,6 +35,10 @@ public class LeaderboardEntryDTO {
             example = "4.5")
     private double score;
 
+    @Schema(description = "Total number of games played in this tournament",
+            example = "6")
+    private int totalGamesPlayed;
+
     @Schema(description = "Tiebreaker 1: Sum of all opponents' scores",
             example = "12.5")
     private double buchholz;
