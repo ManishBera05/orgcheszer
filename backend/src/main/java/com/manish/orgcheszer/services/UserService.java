@@ -4,7 +4,6 @@ import com.manish.orgcheszer.dtos.MyTournamentDTO;
 import com.manish.orgcheszer.dtos.OpponentDTO;
 import com.manish.orgcheszer.dtos.PublicUserProfileDTO;
 import com.manish.orgcheszer.dtos.UserTournamentStatsDTO;
-import com.manish.orgcheszer.dtos.UserTournamentSummaryDTO;
 import com.manish.orgcheszer.entities.Game;
 import com.manish.orgcheszer.entities.PlayerTournamentStats;
 import com.manish.orgcheszer.entities.Rounds;
@@ -90,21 +89,21 @@ public class UserService {
 
         return switch (role.toUpperCase()) {
             case "ORGANIZER" -> {
-                // Tournament entity has startDataTime directly
+                // Tournament entity has startDateTime directly
                 Pageable pageable = PageRequest.of(page, size,
-                        Sort.by("startDataTime").descending());
+                        Sort.by("startDateTime").descending());
                 yield getOrganizedTournaments(currentUser.getId(), pageable);
             }
             case "STAFF" -> {
-                // TournamentStaff → tournament.startDataTime
+                // TournamentStaff → tournament.startDateTime
                 Pageable pageable = PageRequest.of(page, size,
-                        Sort.by("tournament.startDataTime").descending());
+                        Sort.by("tournament.startDateTime").descending());
                 yield getStaffedTournaments(currentUser.getId(), pageable);
             }
             case "PLAYER" -> {
-                // PlayerTournamentStats → tournament.startDataTime
+                // PlayerTournamentStats → tournament.startDateTime
                 Pageable pageable = PageRequest.of(page, size,
-                        Sort.by("tournament.startDataTime").descending());
+                        Sort.by("tournament.startDateTime").descending());
                 yield getPlayedTournaments(currentUser.getId(), pageable);
             }
             default -> throw new RuntimeException(
@@ -129,7 +128,7 @@ public class UserService {
                 .tournamentName(t.getTournamentName())
                 .format(t.getFormat())
                 .status(t.getStatus())
-                .startDateTime(t.getStartDataTime())
+                .startDateTime(t.getStartDateTime())
                 .location(t.getLocation())
                 .role("ORGANIZER")
                 .build());
@@ -148,7 +147,7 @@ public class UserService {
                 .tournamentName(ts.getTournament().getTournamentName())
                 .format(ts.getTournament().getFormat())
                 .status(ts.getTournament().getStatus())
-                .startDateTime(ts.getTournament().getStartDataTime())
+                .startDateTime(ts.getTournament().getStartDateTime())
                 .location(ts.getTournament().getLocation())
                 .role("STAFF")
                 .build());
@@ -173,7 +172,7 @@ public class UserService {
                     .tournamentName(s.getTournament().getTournamentName())
                     .format(s.getTournament().getFormat())
                     .status(s.getTournament().getStatus())
-                    .startDateTime(s.getTournament().getStartDataTime())
+                    .startDateTime(s.getTournament().getStartDateTime())
                     .location(s.getTournament().getLocation())
                     .role("PLAYER")
                     .score(s.getCurrentScore())

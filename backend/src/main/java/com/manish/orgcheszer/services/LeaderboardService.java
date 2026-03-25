@@ -6,6 +6,9 @@ import com.manish.orgcheszer.enums.GameResult;
 import com.manish.orgcheszer.enums.TournamentFormat;
 import com.manish.orgcheszer.repositories.*;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,11 +23,10 @@ public class LeaderboardService {
     private final PlayerTournamentStatsRepository statsRepository;
     private final RoundsRepository                roundsRepository;
     private final GameRepository                  gameRepository;
-
     // GET LEADERBOARD
     // Returns sorted standings for a tournament at any point in time
     @Transactional(readOnly = true)
-    public List<LeaderboardEntryDTO> getLeaderboard(UUID tournamentId) {
+    public Page<LeaderboardEntryDTO> getLeaderboard(UUID tournamentId, int page, int size) {
         Tournament tournament = tournamentRepository.findById(tournamentId)
                 .orElseThrow(() -> new RuntimeException("Tournament not found"));
 
@@ -63,9 +65,21 @@ public class LeaderboardService {
                     .findByPlayerIdAndTournamentTournamentId(currentPlayerId,tournamentId)
                     .orElseThrow(() -> new RuntimeException("Round not found"));
             requiredPlayer.setFinalRank(i+1);
+            statsRepository.save(requiredPlayer);
         }
 
-        return leaderboard;
+        int total = leaderboard.size();
+        int start = page * size;
+        int end = Math.min(start + size, total);
+
+        if(start >= total){
+            return new PageImpl<>(Collections.emptyList(),
+                    PageRequest.of(page,size), total);
+        }
+        return new PageImpl<>(
+                leaderboard.subList(start, end),
+                PageRequest.of(page, size),
+                total);
     }
 
      /**SWISS sort priority:

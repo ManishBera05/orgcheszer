@@ -4,6 +4,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
@@ -40,7 +41,6 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/api/auth/**",         // login, register
                                 "/api/tournaments",     // browse tournaments
-                                "/api/tournaments/**", // view tournament details
                                 "/api/tournaments/*/leaderboard",
                                 "/api/tournaments/*/players",
                                 "/swagger-ui.html",
@@ -52,6 +52,12 @@ public class SecurityConfig {
                                 "/api/stats",
                                 "/error"    // built-in fallback endpoint used to handle errors that occur during request processing
                         ).permitAll()
+                        // Only these specific tournament GET endpoints are public
+                        .requestMatchers(HttpMethod.GET, "/api/tournaments").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/tournaments/*").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/tournaments/*/leaderboard").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/tournaments/*/players").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/tournaments/*/rounds/*/pairings").permitAll()
                         .anyRequest().authenticated()
                 )
                 .authenticationProvider(authenticationProvider())

@@ -12,3 +12,6 @@ application:
       #Dummy key for testing
       secret-key: 1111111111111111111111111111111111111111111111111111111111111111
       expiration: 360000
+admin:
+  secret:
+    key: 111111 #dummy admin secret key

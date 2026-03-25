@@ -97,7 +97,7 @@ class LeaderboardServiceTest {
                         s.getPlayer().getId(), tournamentId))
                         .thenReturn(Optional.of(s))
         );
-        return leaderboardService.getLeaderboard(tournamentId);
+        return leaderboardService.getLeaderboard(tournamentId,0,100).toList();
     }
 
     // Asserts the result list matches the expected player order and verifies the repo call.

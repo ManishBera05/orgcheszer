@@ -32,3 +32,9 @@ springdoc:
 api:
   contact:
     email: beramanish.25@gmail.com
+tournament:
+  require-approval: true
+
+admin:
+  secret:
+    key: ${ADMIN_SECRET_KEY}

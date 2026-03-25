@@ -1,20 +1,30 @@
 package com.manish.orgcheszer.services;
 
+import com.manish.orgcheszer.dtos.RegistrationRequestDTO;
 import com.manish.orgcheszer.dtos.TournamentCreateRequest;
 import com.manish.orgcheszer.dtos.TournamentPlayerDTO;
 import com.manish.orgcheszer.dtos.TournamentResponse;
 import com.manish.orgcheszer.entities.PlayerTournamentStats;
+import com.manish.orgcheszer.entities.RegistrationRequest;
 import com.manish.orgcheszer.entities.Tournament;
 import com.manish.orgcheszer.entities.TournamentTicket;
 import com.manish.orgcheszer.entities.Users;
+import com.manish.orgcheszer.enums.RegistrationRequestStatus;
+import com.manish.orgcheszer.enums.TicketStatus;
 import com.manish.orgcheszer.enums.TournamentFormat;
 import com.manish.orgcheszer.enums.TournamentStatus;
 import com.manish.orgcheszer.repositories.PlayerTournamentStatsRepository;
+import com.manish.orgcheszer.repositories.RegistrationRequestRepository;
 import com.manish.orgcheszer.repositories.TournamentRepository;
 import com.manish.orgcheszer.repositories.TournamentStaffRepository;
 import com.manish.orgcheszer.repositories.TournamentTicketRepository;
 import com.manish.orgcheszer.repositories.UsersRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -35,12 +45,17 @@ public class TournamentService {
     private final TournamentStaffRepository tournamentStaffRepository;
     private final TournamentTicketService tournamentTicketService;
     private final TournamentTicketRepository ticketRepository;
+    private final RegistrationRequestRepository registrationRequestRepository;
+
+    @Value("${tournament.require-approval}")
+    private boolean requireApproval;
 
     // Helper: get current logged in user
     private Users getCurrentUser() {
         String email = SecurityContextHolder.getContext()
                 .getAuthentication()
                 .getName();
+        System.out.println("error here : "+ email);
         return usersRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
     }
@@ -52,7 +67,7 @@ public class TournamentService {
 
         Tournament tournament = new Tournament();
         tournament.setTournamentName(request.getTournamentName());
-        tournament.setStartDataTime(request.getStartDateTime());
+        tournament.setStartDateTime(request.getStartDateTime());
         tournament.setNumberOfRounds(request.getNumberOfRounds());
         tournament.setMaxParticipants(request.getMaxParticipants());
         tournament.setEntryFee(request.getEntryFee());
@@ -60,33 +75,42 @@ public class TournamentService {
         tournament.setLocation(request.getLocation());
         tournament.setTimeControl(request.getTimeControl());
         tournament.setFormat(TournamentFormat.valueOf(request.getFormat()));
-        tournament.setStatus(TournamentStatus.UPCOMING);
+        tournament.setStatus(requireApproval ? TournamentStatus.DRAFT : TournamentStatus.UPCOMING);
         tournament.setOrganizer(organizer);
 
         tournamentRepository.save(tournament);
         return mapToResponse(tournament);
     }
 
-    public List<TournamentResponse> getAllTournaments() {
-        return tournamentRepository.findAll()
-                .stream()
-                .map(this::mapToResponse)
-                .collect(Collectors.toList());
+    public Page<TournamentResponse> getAllTournaments(
+            String status, int page, int size) {
+
+        Pageable pageable = PageRequest.of(page, size,
+                Sort.by("startDateTime").descending());
+
+        Page<Tournament> tournaments;
+
+        if (status == null || status.isBlank()) {
+            tournaments = tournamentRepository.findByStatusNotAndIsDemoFalse(TournamentStatus.DRAFT,pageable);
+        } else {
+            TournamentStatus tournamentStatus;
+            try {
+                tournamentStatus = TournamentStatus.valueOf(status.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                throw new RuntimeException(
+                        "Invalid status. Use: UPCOMING, ONGOING, COMPLETED or CANCELLED");
+            }
+            tournaments = tournamentRepository
+                    .findByStatusAndIsDemoFalse(tournamentStatus, pageable);
+        }
+
+        return tournaments.map(this::mapToResponse);
     }
 
     public TournamentResponse getTournament(UUID tournamentId) {
         Tournament tournament = tournamentRepository.findById(tournamentId)
                 .orElseThrow(() -> new RuntimeException("Tournament not found"));
         return mapToResponse(tournament);
-    }
-
-    public List<TournamentResponse> getMyTournaments() {
-        Users organizer = getCurrentUser();
-        return tournamentRepository
-                .findByOrganizerIdOrderByStartDataTimeDesc(organizer.getId())
-                .stream()
-                .map(this::mapToResponse)
-                .collect(Collectors.toList());
     }
 
     public TournamentResponse updateTournament(UUID tournamentId, TournamentCreateRequest request) {
@@ -104,7 +128,7 @@ public class TournamentService {
         }
 
         tournament.setTournamentName(request.getTournamentName());
-        tournament.setStartDataTime(request.getStartDateTime());
+        tournament.setStartDateTime(request.getStartDateTime());
         tournament.setNumberOfRounds(request.getNumberOfRounds());
         tournament.setMaxParticipants(request.getMaxParticipants());
         tournament.setEntryFee(request.getEntryFee());
@@ -126,9 +150,13 @@ public class TournamentService {
             throw new AccessDeniedException("Only the organizer can cancel this tournament");
         }
 
-        if (tournament.getStatus() == TournamentStatus.COMPLETED) {
-            throw new RuntimeException("Cannot cancel a completed tournament");
+        if (tournament.getStatus() == TournamentStatus.COMPLETED ||
+                tournament.getStatus() == TournamentStatus.ONGOING) {
+            throw new RuntimeException("Cannot cancel a completed or ongoing tournament");
         }
+
+        // Delete All pending registration requests for this tournament
+        registrationRequestRepository.deleteAllByTournamentTournamentId(tournamentId);
 
         tournament.setStatus(TournamentStatus.CANCELLED);
         tournamentRepository.save(tournament);
@@ -143,9 +171,9 @@ public class TournamentService {
         if (tournament.getStatus() != TournamentStatus.UPCOMING) {
             throw new RuntimeException("Registration is closed for this tournament");
         }
-        if (tournament.getPlayers().size() >= tournament.getMaxParticipants()) {
-            throw new RuntimeException("Tournament is full");
-        }
+//        if (tournament.getPlayers().size() >= tournament.getMaxParticipants()) {
+//            throw new RuntimeException("Tournament is full");
+//        }
         if (playerTournamentStatsRepository
                 .existsByPlayerIdAndTournamentTournamentId(
                         currentUser.getId(), tournamentId)) {
@@ -158,23 +186,170 @@ public class TournamentService {
             throw new RuntimeException("Staff member cannot register as a player");
         }
 
+        if (tournament.getEntryFee() == 0) {
+            // ── FREE TOURNAMENT: existing flow unchanged ───────────────────────
+            if (tournament.getPlayers().size() >= tournament.getMaxParticipants()) {
+                throw new RuntimeException("Tournament is full");
+            }
+            addPlayerToTournament(currentUser, tournament);
+        } else {
+            // ── PAID TOURNAMENT: goes through request/approval flow ────────────
+            submitRegistrationRequest(currentUser, tournament);
+        }
+
         // Add to players list
-        tournament.getPlayers().add(currentUser);
+//        tournament.getPlayers().add(currentUser);
+//
+//        // Count existing players to determine next pairingId
+//        int currentCount = playerTournamentStatsRepository
+//                .countByTournamentTournamentId(tournamentId);
+//
+//        // Create stats entry
+//        PlayerTournamentStats stats = new PlayerTournamentStats();
+//        stats.setPlayer(currentUser);
+//        stats.setTournament(tournament);
+//        stats.setPairingId(currentCount + 1); // permanent, 1-based
+//        stats.setCurrentScore(0);
+//
+//        tournamentRepository.save(tournament);
+//        playerTournamentStatsRepository.save(stats);
+//        tournamentTicketService.issueTicket(currentUser, tournament);
+    }
 
-        // Count existing players to determine next pairingId
-        int currentCount = playerTournamentStatsRepository
-                .countByTournamentTournamentId(tournamentId);
+    // SUBMIT REGISTRATION REQUEST (paid tournaments only)
+// ─────────────────────────────────────────────────────────────────────────────
+    private void submitRegistrationRequest(Users player, Tournament tournament) {
+        UUID tournamentId = tournament.getTournamentId();
 
-        // Create stats entry
-        PlayerTournamentStats stats = new PlayerTournamentStats();
-        stats.setPlayer(currentUser);
-        stats.setTournament(tournament);
-        stats.setPairingId(currentCount + 1); // permanent, 1-based
-        stats.setCurrentScore(0);
+        // Block duplicate pending requests
+        if (registrationRequestRepository
+                .existsByPlayerIdAndTournamentTournamentIdAndStatus(
+                        player.getId(), tournamentId,
+                        RegistrationRequestStatus.PENDING)) {
+            throw new RuntimeException(
+                    "You already have a pending registration request for this tournament");
+        }
 
-        tournamentRepository.save(tournament);
-        playerTournamentStatsRepository.save(stats);
-        tournamentTicketService.issueTicket(currentUser, tournament);
+        // Cap: pending requests cannot exceed 3x maxParticipants
+        // Cap counts: current PENDING requests + already approved players
+        long pendingCount = registrationRequestRepository
+                .countByTournamentTournamentIdAndStatus(
+                        tournamentId, RegistrationRequestStatus.PENDING);
+        long approvedCount = tournament.getPlayers().size();
+        long totalRequests = pendingCount + approvedCount;
+
+        if (totalRequests >= (long) tournament.getMaxParticipants() * 3) {
+            throw new RuntimeException(
+                    "Registration requests are full for this tournament");
+        }
+
+        RegistrationRequest request = new RegistrationRequest();
+        request.setPlayer(player);
+        request.setTournament(tournament);
+        request.setStatus(RegistrationRequestStatus.PENDING);
+        request.setRequestedAt(LocalDateTime.now());
+        registrationRequestRepository.save(request);
+    }
+
+    // GET PENDING REQUESTS (organizer only)
+// ─────────────────────────────────────────────────────────────────────────────
+    public List<RegistrationRequestDTO> getPendingRequests(UUID tournamentId) {
+        Tournament tournament = tournamentRepository.findById(tournamentId)
+                .orElseThrow(() -> new RuntimeException("Tournament not found"));
+
+        Users currentUser = getCurrentUser();
+        if (!tournament.getOrganizer().getId().equals(currentUser.getId())) {
+            throw new AccessDeniedException(
+                    "Only the organizer can view registration requests");
+        }
+
+        return registrationRequestRepository
+                .findByTournamentTournamentIdAndStatus(
+                        tournamentId, RegistrationRequestStatus.PENDING)
+                .stream()
+                .map(req -> RegistrationRequestDTO.builder()
+                        .requestId(req.getId())
+                        .playerId(req.getPlayer().getId())
+                        .playerName(req.getPlayer().getFirstName()
+                                + " " + req.getPlayer().getLastName())
+                        .playerEloRating(req.getPlayer().getEloRating())
+                        .playerFideId(req.getPlayer().getFideId())
+                        .requestedAt(req.getRequestedAt())
+                        .build())
+                .collect(Collectors.toList());
+    }
+
+    // APPROVE REQUEST (organizer only)
+// ─────────────────────────────────────────────────────────────────────────────
+    public void approveRequest(UUID tournamentId, UUID requestId) {
+        Tournament tournament = tournamentRepository.findById(tournamentId)
+                .orElseThrow(() -> new RuntimeException("Tournament not found"));
+
+        Users currentUser = getCurrentUser();
+        if (!tournament.getOrganizer().getId().equals(currentUser.getId())) {
+            throw new AccessDeniedException(
+                    "Only the organizer can approve registration requests");
+        }
+
+        RegistrationRequest request = registrationRequestRepository
+                .findById(requestId)
+                .orElseThrow(() -> new RuntimeException("Registration request not found"));
+
+        // Verify request belongs to this tournament
+        if (!request.getTournament().getTournamentId().equals(tournamentId)) {
+            throw new RuntimeException(
+                    "This request does not belong to this tournament");
+        }
+
+        if (request.getStatus() != RegistrationRequestStatus.PENDING) {
+            throw new RuntimeException("This request is no longer pending");
+        }
+
+        // Capacity check at approval time
+        if (tournament.getPlayers().size() >= tournament.getMaxParticipants()) {
+            throw new RuntimeException(
+                    "Tournament is full — cannot approve more players");
+        }
+
+        // Tournament must still be upcoming
+        if (tournament.getStatus() != TournamentStatus.UPCOMING) {
+            throw new RuntimeException(
+                    "Cannot approve requests — tournament is no longer upcoming");
+        }
+
+        // Add player to tournament — then delete the request
+        addPlayerToTournament(request.getPlayer(), tournament);
+        registrationRequestRepository.delete(request);
+    }
+
+
+    // REJECT REQUEST (organizer only) — silently deletes the request
+// ─────────────────────────────────────────────────────────────────────────────
+    public void rejectRequest(UUID tournamentId, UUID requestId) {
+        Tournament tournament = tournamentRepository.findById(tournamentId)
+                .orElseThrow(() -> new RuntimeException("Tournament not found"));
+
+        Users currentUser = getCurrentUser();
+        if (!tournament.getOrganizer().getId().equals(currentUser.getId())) {
+            throw new AccessDeniedException(
+                    "Only the organizer can reject registration requests");
+        }
+
+        RegistrationRequest request = registrationRequestRepository
+                .findById(requestId)
+                .orElseThrow(() -> new RuntimeException("Registration request not found"));
+
+        if (!request.getTournament().getTournamentId().equals(tournamentId)) {
+            throw new RuntimeException(
+                    "This request does not belong to this tournament");
+        }
+
+        if (request.getStatus() != RegistrationRequestStatus.PENDING) {
+            throw new RuntimeException("This request is no longer pending");
+        }
+
+        // Silently delete — player can reapply
+        registrationRequestRepository.delete(request);
     }
 
     private void validateTournamentRequest(TournamentCreateRequest request) {
@@ -243,7 +418,7 @@ public class TournamentService {
         TournamentResponse response = new TournamentResponse();
         response.setTournamentId(tournament.getTournamentId());
         response.setTournamentName(tournament.getTournamentName());
-        response.setStartDateTime(tournament.getStartDataTime());
+        response.setStartDateTime(tournament.getStartDateTime());
         response.setNumberOfRounds(tournament.getNumberOfRounds());
         response.setMaxParticipants(tournament.getMaxParticipants());
         response.setEntryFee(tournament.getEntryFee());
@@ -252,6 +427,9 @@ public class TournamentService {
         response.setTimeControl(tournament.getTimeControl());
         response.setFormat(tournament.getFormat().name());
         response.setStatus(tournament.getStatus().name());
+        response.setCheckedInPlayers(
+                (int) ticketRepository.countByTournamentTournamentIdAndStatus(
+                        tournament.getTournamentId(), TicketStatus.CHECKED_IN));
         response.setOrganizerName(
                 tournament.getOrganizer().getFirstName() + " " +
                         tournament.getOrganizer().getLastName()
@@ -285,5 +463,50 @@ public class TournamentService {
                             .build();
                 })
                 .collect(Collectors.toList());
+    }
+
+    public void approveDraftTournament(UUID tournamentId){
+        Tournament tournament = tournamentRepository.findById(tournamentId)
+                .orElseThrow(() -> new RuntimeException("Tournament not found"));
+
+        if (tournament.getStatus() != TournamentStatus.DRAFT) {
+            throw new RuntimeException(
+                    "Tournament is not in DRAFT status — current status: "
+                            + tournament.getStatus());
+        }
+
+        tournament.setStatus(TournamentStatus.UPCOMING);
+        tournamentRepository.save(tournament);
+    }
+
+    public List<TournamentResponse> getDraftTournaments() {
+        return tournamentRepository
+                .findByStatus(TournamentStatus.DRAFT)
+                .stream()
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
+    }
+
+    // HELPER — shared by free tournament flow and approval flow
+    // Creates stats, adds to players list, issues ticket
+    // ─────────────────────────────────────────────────────────────────────────────
+    private void addPlayerToTournament(Users player, Tournament tournament) {
+        UUID tournamentId = tournament.getTournamentId();
+
+        // Assign pairingId
+        int pairingId = playerTournamentStatsRepository
+                .countByTournamentTournamentId(tournamentId) + 1;
+
+        tournament.getPlayers().add(player);
+
+        PlayerTournamentStats stats = new PlayerTournamentStats();
+        stats.setPlayer(player);
+        stats.setTournament(tournament);
+        stats.setCurrentScore(0);
+        stats.setPairingId(pairingId);
+        playerTournamentStatsRepository.save(stats);
+
+        tournamentRepository.save(tournament);
+        tournamentTicketService.issueTicket(player, tournament);
     }
 }

@@ -1,12 +1,15 @@
 package com.manish.orgcheszer.services;
 
+import com.manish.orgcheszer.dtos.StaffForTournamentResponse;
 import com.manish.orgcheszer.dtos.StaffKeyResponse;
+import com.manish.orgcheszer.dtos.TournamentResponse;
 import com.manish.orgcheszer.entities.StaffKey;
 import com.manish.orgcheszer.entities.Tournament;
 import com.manish.orgcheszer.entities.TournamentStaff;
 import com.manish.orgcheszer.entities.Users;
 import com.manish.orgcheszer.enums.TournamentStatus;
 import com.manish.orgcheszer.repositories.PlayerTournamentStatsRepository;
+import com.manish.orgcheszer.repositories.RegistrationRequestRepository;
 import com.manish.orgcheszer.repositories.StaffKeyRepository;
 import com.manish.orgcheszer.repositories.TournamentRepository;
 import com.manish.orgcheszer.repositories.TournamentStaffRepository;
@@ -31,6 +34,7 @@ public class StaffKeyService {
     private final TournamentStaffRepository tournamentStaffRepository;
     private final UsersRepository usersRepository;
     private final PlayerTournamentStatsRepository playerTournamentStatsRepository;
+    private final RegistrationRequestRepository registrationRequestRepository;
 
     private Users getCurrentUser() {
         String email = SecurityContextHolder.getContext()
@@ -90,8 +94,12 @@ public class StaffKeyService {
         if (playerTournamentStatsRepository
                 .existsByPlayerIdAndTournamentTournamentId(
                         currentUser.getId(),
-                        tournament.getTournamentId())) {
-            throw new RuntimeException("You are already registered as a player in this tournament");
+                        tournament.getTournamentId()) ||
+                registrationRequestRepository.
+                        existsByPlayerIdAndTournamentTournamentId(
+                                currentUser.getId(), tournament.getTournamentId())
+            ) {
+            throw new RuntimeException("You are already registered or have a pending request as a player in this tournament");
         }
 
         // Can't join as staff if already a staff
@@ -140,5 +148,48 @@ public class StaffKeyService {
                         key.getUsedAt()
                 ))
                 .collect(Collectors.toList());
+    }
+
+    // View all staffs for a tournament (organizer only)
+    public List<StaffForTournamentResponse> getStaffsForTournament(UUID tournamentId) {
+        Tournament tournament = tournamentRepository.findById(tournamentId)
+                .orElseThrow(() -> new RuntimeException("Tournament not found"));
+
+        Users currentUser = getCurrentUser();
+        if (!tournament.getOrganizer().getId().equals(currentUser.getId())) {
+            throw new AccessDeniedException("Only the organizer can view staff keys");
+        }
+
+//    private String keyUsed;
+//    private String name;
+//    private UUID userID;
+        List<StaffForTournamentResponse> allStaffForTournamentResponse = new ArrayList<>();
+//        int numberOfStaffs = tournamentStaffRepository.
+        List<TournamentStaff> allTournamentStaffs =
+                tournamentStaffRepository.findByTournamentTournamentId(tournamentId);
+
+
+        for(TournamentStaff ts : allTournamentStaffs){
+            StaffForTournamentResponse staffForTournamentResponse = StaffForTournamentResponse.builder()
+                    .keyUsed(ts.getKeyUsed())
+                    .userID(ts.getUser().getId())
+                    .name(ts.getUser().getFirstName() + " "+ ts.getUser().getLastName())
+                    .build();
+            allStaffForTournamentResponse.add(staffForTournamentResponse);
+        }
+
+
+        return allStaffForTournamentResponse;
+//        return staffKeyRepository.findByTournamentTournamentId(tournamentId)
+//                .stream()
+//                .map(key -> new StaffKeyResponse(
+//                        key.getKeyValue(),
+//                        key.isUsed(),
+//                        key.getCreatedAt(),
+//                        key.getUsedAt()
+//                ))
+//                .collect(Collectors.toList());
+
+        // name, userid, keyused
     }
 }

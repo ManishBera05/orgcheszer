@@ -5,6 +5,7 @@ import com.manish.orgcheszer.services.LeaderboardService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -22,8 +23,11 @@ public class LeaderboardController {
     @Operation(summary = "Get live leaderboard",
             description = "Public endpoint returning players sorted by FIDE Tiebreakers.")
     @GetMapping("/{tournamentId}/leaderboard")
-    public ResponseEntity<List<LeaderboardEntryDTO>> getLeaderboard(
-            @PathVariable UUID tournamentId) {
-        return ResponseEntity.ok(leaderboardService.getLeaderboard(tournamentId));
+    public ResponseEntity<Page<LeaderboardEntryDTO>> getLeaderboard(
+            @PathVariable UUID tournamentId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "50") int size) {
+        return ResponseEntity.ok(
+                leaderboardService.getLeaderboard(tournamentId, page, size));
     }
 }

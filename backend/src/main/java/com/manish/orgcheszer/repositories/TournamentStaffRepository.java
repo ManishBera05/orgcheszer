@@ -13,8 +13,7 @@ import java.util.UUID;
 @Repository
 public interface TournamentStaffRepository extends JpaRepository<TournamentStaff, UUID> {
     boolean existsByUserIdAndTournamentTournamentId(UUID userId, UUID tournamentId);  // role check
-    List<TournamentStaff> findByUserId(UUID userId);
-    Optional<TournamentStaff> findByUserIdAndTournamentTournamentId(UUID userId, UUID tournamentId);
+    List<TournamentStaff> findByTournamentTournamentId(UUID tournamentTournamentId);
     Page<TournamentStaff> findByUserId(UUID userId, Pageable pageable);
     long countByUserId(UUID userId);
 }

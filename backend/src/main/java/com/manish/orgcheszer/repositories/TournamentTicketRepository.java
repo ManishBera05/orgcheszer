@@ -1,6 +1,7 @@
 package com.manish.orgcheszer.repositories;
 
 import com.manish.orgcheszer.entities.TournamentTicket;
+import com.manish.orgcheszer.enums.TicketStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -14,6 +15,7 @@ import java.util.UUID;
 public interface TournamentTicketRepository extends JpaRepository<TournamentTicket, UUID> {
     Optional<TournamentTicket> findByTicketToken(String token);  // QR validation
     Optional<TournamentTicket> findByPlayerIdAndTournamentTournamentId(UUID playerId, UUID tournamentId);
+    long countByTournamentTournamentIdAndStatus(UUID tournamentTournamentId, TicketStatus status);
     boolean existsByPlayerIdAndTournamentTournamentId(UUID playerId, UUID tournamentId); // duplicate ticket check
     @Query("SELECT t.player.id FROM TournamentTicket t " +
             "WHERE t.tournament.tournamentId = :tournamentId " +

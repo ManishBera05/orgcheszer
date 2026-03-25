@@ -1,5 +1,6 @@
 package com.manish.orgcheszer.controllers;
 
+import com.manish.orgcheszer.dtos.RegistrationRequestDTO;
 import com.manish.orgcheszer.dtos.TournamentCreateRequest;
 import com.manish.orgcheszer.dtos.TournamentPlayerDTO;
 import com.manish.orgcheszer.dtos.TournamentResponse;
@@ -8,6 +9,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -17,6 +19,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -34,8 +37,12 @@ public class TournamentController {
     @Operation(summary = "Get all public tournaments",
             description = "Public endpoint to view all tournaments.")
     @GetMapping
-    public ResponseEntity<List<TournamentResponse>> getAllTournaments() {
-        return ResponseEntity.ok(tournamentService.getAllTournaments());
+    public ResponseEntity<Page<TournamentResponse>> getAllTournaments(
+            @RequestParam(required = false) String status,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "12") int size) {
+        return ResponseEntity.ok(
+                tournamentService.getAllTournaments(status, page, size));
     }
 
     @Operation(summary = "Get specific tournament",
@@ -75,13 +82,47 @@ public class TournamentController {
         tournamentService.cancelTournament(tournamentId);
         return ResponseEntity.noContent().build();
     }
+    // No need anymore since UserController /me does the same job in the params
+//    @Operation(summary = "Get my organized tournaments",
+//            description = "Fetches tournaments where the currently logged-in user is the Organizer.",
+//            security = @SecurityRequirement(name = "bearerAuth"))
+//    @GetMapping("/my-tournaments")
+//    public ResponseEntity<List<TournamentResponse>> getMyTournaments() {
+//        return ResponseEntity.ok(tournamentService.getMyTournaments());
+//    }
 
-    @Operation(summary = "Get my organized tournaments",
-            description = "Fetches tournaments where the currently logged-in user is the Organizer.",
+    // View pending requests (organizer only)
+    @Operation(summary = "Shows the users requesting to join the tournament",
+            description = "Fetches all the registered participants verify them for the payment",
             security = @SecurityRequirement(name = "bearerAuth"))
-    @GetMapping("/my-tournaments")
-    public ResponseEntity<List<TournamentResponse>> getMyTournaments() {
-        return ResponseEntity.ok(tournamentService.getMyTournaments());
+    @GetMapping("/{tournamentId}/requests")
+    public ResponseEntity<List<RegistrationRequestDTO>> getPendingRequests(
+            @PathVariable UUID tournamentId) {
+        return ResponseEntity.ok(
+                tournamentService.getPendingRequests(tournamentId));
+    }
+
+    @Operation(summary = "Verify payment and grant the user to enter the tournament",
+            description = "Grant access to the tournament to the registered player to enter in the tournament",
+            security = @SecurityRequirement(name = "bearerAuth"))
+    @PatchMapping("/{tournamentId}/requests/{requestId}/approve")
+    public ResponseEntity<Void> approveRequest(
+            @PathVariable UUID tournamentId,
+            @PathVariable UUID requestId) {
+        tournamentService.approveRequest(tournamentId, requestId);
+        return ResponseEntity.ok().build();
+    }
+
+    // Reject a request (organizer only)
+    @Operation(summary = "Reject the user from entering the tournament",
+            description = "Reject the request to enter a tournament to a user who requested for it.",
+            security = @SecurityRequirement(name = "bearerAuth"))
+    @PatchMapping("/{tournamentId}/requests/{requestId}/reject")
+    public ResponseEntity<Void> rejectRequest(
+            @PathVariable UUID tournamentId,
+            @PathVariable UUID requestId) {
+        tournamentService.rejectRequest(tournamentId, requestId);
+        return ResponseEntity.ok().build();
     }
 
     @Operation(summary = "Get registered players",

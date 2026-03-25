@@ -25,6 +25,7 @@ public class TournamentResponse {
     private String format;
     private String organizerName;
     private String organizerPhoneNumber;
+    private int checkedInPlayers;
     private int currentNumberOfParticipants;
     private String status; // UPCOMING, ONGOING, COMPLETED, CANCELLED
 }

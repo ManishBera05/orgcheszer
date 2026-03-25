@@ -1,5 +1,6 @@
 package com.manish.orgcheszer.controllers;
 
+import com.manish.orgcheszer.dtos.StaffForTournamentResponse;
 import com.manish.orgcheszer.dtos.StaffKeyResponse;
 import com.manish.orgcheszer.services.StaffKeyService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -40,7 +41,8 @@ public class StaffKeyController {
 
     @Operation(summary = "Redeem staff key",
             description = "Logged-in user redeems a key to become staff for a tournament.",
-            security = @SecurityRequirement(name = "bearerAuth"))    @PostMapping("/staff-keys/redeem")
+            security = @SecurityRequirement(name = "bearerAuth"))
+    @PostMapping("/staff-keys/redeem")
     public ResponseEntity<Void> redeemKey(@RequestParam String keyValue) {
         staffKeyService.redeemKey(keyValue);
         return ResponseEntity.ok().build();
@@ -54,4 +56,14 @@ public class StaffKeyController {
             @PathVariable UUID tournamentId) {
         return ResponseEntity.ok(staffKeyService.getKeysForTournament(tournamentId));
     }
+
+    @Operation(summary = "View tournament staffs",
+            description = "View all users who redeemed the staff keys of a tournament. Organizer only.",
+            security = @SecurityRequirement(name = "bearerAuth"))
+    @GetMapping("/{tournamentId}/staffs")
+    public ResponseEntity<List<StaffForTournamentResponse>> getStaffs(
+            @PathVariable UUID tournamentId) {
+        return ResponseEntity.ok(staffKeyService.getStaffsForTournament(tournamentId));
+    }
+
 }

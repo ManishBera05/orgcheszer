@@ -83,7 +83,7 @@ class SwissPairingSimulationTests {
         // Create tournament
         Tournament t = new Tournament();
         t.setTournamentName("JaVaFo Simulation Test");
-        t.setStartDataTime(LocalDateTime.now().plusDays(1));
+        t.setStartDateTime(LocalDateTime.now());
         t.setFormat(TournamentFormat.SWISS);
         t.setNumberOfRounds(5);
         t.setMaxParticipants(10);
@@ -377,7 +377,7 @@ class SwissPairingSimulationTests {
     @Transactional
     void testLeaderboard(){
         // Generate the leaderboard
-        leaderboardService.getLeaderboard(tournamentId);
+        leaderboardService.getLeaderboard(tournamentId,0,100);
         List<PlayerTournamentStats> allPlayers = statsRepo.findByTournamentTournamentIdOrderByCurrentScoreDesc(tournamentId);
 
         // Manually calculated the ranks and sorted according to initial pairings

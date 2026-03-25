@@ -8,6 +8,8 @@ import com.manish.orgcheszer.engine.models.Pairing;
 import com.manish.orgcheszer.engine.models.PlayerStanding;
 import com.manish.orgcheszer.entities.*;
 import com.manish.orgcheszer.enums.GameResult;
+import com.manish.orgcheszer.enums.RegistrationRequestStatus;
+import com.manish.orgcheszer.enums.RoundStatus;
 import com.manish.orgcheszer.enums.TournamentFormat;
 import com.manish.orgcheszer.enums.TournamentStatus;
 import com.manish.orgcheszer.repositories.*;
@@ -34,6 +36,7 @@ public class MatchmakingService {
     private final LeaderboardService              leaderboardService;
     private final TournamentTicketRepository      ticketRepository;
     private final ApplicationContext              applicationContext;
+    private final RegistrationRequestRepository   registrationRequestRepository;
 
     // PUBLIC METHODS
     public RoundPairingsResponse getRoundPairings(UUID tournamentId, int roundNumber) {
@@ -53,7 +56,7 @@ public class MatchmakingService {
                         g.getResult() != null ? g.getResult().name() : "PENDING"))
                 .collect(Collectors.toList());
 
-        return new RoundPairingsResponse(roundNumber, pairs);
+        return new RoundPairingsResponse(roundNumber, pairs,round.getStatus().name());
     }
 
     // generate pairings for the next round, after all the results of the games are submitted
@@ -77,6 +80,11 @@ public class MatchmakingService {
             throw new RuntimeException("Tournament is cancelled");
         }
 
+        if(LocalDateTime.now().isBefore(tournament.getStartDateTime())){
+            throw new RuntimeException("Cannot generate rounds before the tournament starts");
+        }
+
+//        if(tournament)
         // determines round number
         List<Rounds> existingRounds = roundsRepository
                 .findByTournamentTournamentIdOrderByRoundNumber(tournamentId);
@@ -106,13 +114,18 @@ public class MatchmakingService {
             throw new RuntimeException(
                     "No players have checked in yet — scan player tickets before generating pairings");
         }
-        if (checkedInIds.size() < 2) {
-            throw new RuntimeException("At least 2 players must be checked in to generate pairings");
+        if (checkedInIds.size() < 4) {
+            throw new RuntimeException("At least 4 players must be checked in to generate pairings");
         }
 
         if (nextRoundNumber == 1) {
             tournament.setStatus(TournamentStatus.ONGOING);
             tournamentRepository.save(tournament);
+
+            // Delete all pending requests — tournament has started
+            registrationRequestRepository
+                    .deleteAllByTournamentTournamentIdAndStatus(
+                            tournamentId, RegistrationRequestStatus.PENDING);
         }
 
         // Load all games played so far
@@ -177,6 +190,7 @@ public class MatchmakingService {
         newRound.setRoundNumber(nextRoundNumber);
         newRound.setTournament(tournament);
         newRound.setStartTime(LocalDateTime.now());
+        newRound.setStatus(RoundStatus.IN_PROGRESS);
         roundsRepository.save(newRound);
 
         int boardNumber = 1;
@@ -231,7 +245,7 @@ public class MatchmakingService {
         Game game = gameRepository.findById(gameId)
                 .orElseThrow(() -> new RuntimeException("Game not found"));
 
-        // FIX: guard against bye games
+        // guard against bye games
         if (game.getBlackPlayer() == null) {
             throw new RuntimeException("Cannot manually submit result for a bye game");
         }
@@ -264,6 +278,17 @@ public class MatchmakingService {
 
         game.setResult(result);
         gameRepository.save(game);
+
+        // Update round status
+        Rounds round = game.getRound();
+        List<Game> roundGames = gameRepository.findByRoundId(round.getId());
+
+        boolean allDone = roundGames.stream()
+                .allMatch(g -> g.getResult() != null
+                        && g.getResult() != GameResult.PENDING);
+
+        round.setStatus(allDone ? RoundStatus.COMPLETED : RoundStatus.IN_PROGRESS);
+        roundsRepository.save(round);
 
         // After saving the result, record opponents for both players
         addOpponent(game.getWhitePlayer().getId(), tournamentId, game.getBlackPlayer().getId());
@@ -298,6 +323,7 @@ public class MatchmakingService {
             Rounds round = new Rounds();
             round.setRoundNumber(entry.getKey());
             round.setTournament(tournament);
+            round.setStatus(RoundStatus.IN_PROGRESS);
             roundsRepository.save(round);
 
             int boardNumber = 1;

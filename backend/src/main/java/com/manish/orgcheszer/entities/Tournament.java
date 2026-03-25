@@ -39,7 +39,7 @@ public class Tournament {
     private String tournamentName;
 
     @Column(name = "start_time", nullable = false)
-    private LocalDateTime startDataTime;
+    private LocalDateTime startDateTime;
 
     @Column(name = "total_rounds", nullable = false)
     private int numberOfRounds;

@@ -13,9 +13,11 @@ import java.util.UUID;
 
 @Repository
 public interface TournamentRepository extends JpaRepository<Tournament, UUID> {
+    Page<Tournament> findByStatusNotAndIsDemoFalse(TournamentStatus status, Pageable pageable);
+    Page<Tournament> findByStatusAndIsDemoFalse(TournamentStatus status, Pageable pageable);
+    List<Tournament> findByStatus(TournamentStatus status);
     long countByIsDemoFalse();
     long countByStatusAndIsDemoFalse(TournamentStatus status);
-    List<Tournament> findByOrganizerIdOrderByStartDataTimeDesc(UUID organizerId); // organizer's tournaments
     Page<Tournament> findByOrganizerIdAndIsDemoFalse(UUID organizerId, Pageable pageable);
     long countByOrganizerIdAndIsDemoFalse(UUID organizerId);
 }
