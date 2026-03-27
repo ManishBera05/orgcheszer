@@ -2,6 +2,7 @@ package com.manish.orgcheszer.controllers;
 
 import com.manish.orgcheszer.dtos.MyTournamentDTO;
 import com.manish.orgcheszer.dtos.PublicUserProfileDTO;
+import com.manish.orgcheszer.dtos.UserDetailsDTO;
 import com.manish.orgcheszer.dtos.UserTournamentStatsDTO;
 import com.manish.orgcheszer.dtos.UserTournamentSummaryDTO;
 import com.manish.orgcheszer.services.UserService;
@@ -29,7 +30,7 @@ public class UserController {
 
     private final UserService userService;
 
-    @Operation(summary = "Get user's public profile",
+    @Operation(summary = "Public profile of user",
             description = "Public endpoint to view users overall status and how many games he won tournaments organized, participated etc.")
     @GetMapping("/{userId}")
     public ResponseEntity<PublicUserProfileDTO> getPublicProfile(
@@ -37,10 +38,18 @@ public class UserController {
         return ResponseEntity.ok(userService.getPublicProfile(userId));
     }
 
-    @Operation(summary = "Gets user's detailed profile",
-            description = "Private endpoint that shows which tournament participated along with the roles and opponents played against.",
+    @Operation(summary = "Gets user's profile",
+            description = "Private endpoint that shows details about the users.",
             security = @SecurityRequirement(name = "bearerAuth"))
     @GetMapping("/me")
+    public ResponseEntity<UserDetailsDTO> getMyProfile(){
+        return ResponseEntity.ok(userService.getMyProfile());
+    }
+
+    @Operation(summary = "Gets user's stats",
+            description = "Private endpoint that shows which tournament participated along with the roles and opponents played against.",
+            security = @SecurityRequirement(name = "bearerAuth"))
+    @GetMapping("/my-tournaments")
     public ResponseEntity<Page<MyTournamentDTO>> getMyTournaments(
             @RequestParam(required = false) String role,
             @RequestParam(defaultValue = "0") int page,

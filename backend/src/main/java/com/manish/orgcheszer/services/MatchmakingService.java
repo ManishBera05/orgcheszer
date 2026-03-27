@@ -242,6 +242,10 @@ public class MatchmakingService {
             throw new AccessDeniedException("Only organizer or staff can submit results");
         }
 
+        if(tournament.getStatus() != TournamentStatus.ONGOING){
+            throw new RuntimeException("Cannot submit result if a tournament isn't ongoing.");
+        }
+
         Game game = gameRepository.findById(gameId)
                 .orElseThrow(() -> new RuntimeException("Game not found"));
 

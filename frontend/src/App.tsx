@@ -1,9 +1,9 @@
+// --- START OF FILE src/App.tsx ---
 import { lazy, Suspense } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import Layout from "./components/layout/Layout";
 import useAuthStore from "./store/authStore";
 
-/* ─── Lazy-loaded pages (each becomes its own JS chunk) ─── */
 const HomePage = lazy(() => import("./pages/HomePage"));
 const LoginPage = lazy(() => import("./pages/LoginPage"));
 const RegisterPage = lazy(() => import("./pages/RegisterPage"));
@@ -16,11 +16,13 @@ const LeaderboardPage = lazy(() => import("./pages/LeaderboardPage"));
 const OrganizerDashboardPage = lazy(
   () => import("./pages/OrganizerDashboardPage"),
 );
+const CreateTournamentPage = lazy(() => import("./pages/CreateTournamentPage"));
+const ManageRoundsPage = lazy(() => import("./pages/ManageRoundsPage"));
 const StaffPanelPage = lazy(() => import("./pages/StaffPanelPage"));
 const ProfilePage = lazy(() => import("./pages/ProfilePage"));
 const ContactPage = lazy(() => import("./pages/ContactPage"));
+const PublicProfilePage = lazy(() => import("./pages/PublicProfilePage"));
 
-/* ─── Page-level loading fallback ────────────────────────── */
 function PageLoader() {
   return (
     <div
@@ -51,35 +53,32 @@ function PageLoader() {
   );
 }
 
-/* ─── Protected route guard ──────────────────────────────── */
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const token = useAuthStore((s) => s.token);
   if (!token) return <Navigate to="/login" replace />;
   return <>{children}</>;
 }
 
-/* ─── Public-only route (redirect if already logged in) ─── */
 function PublicOnlyRoute({ children }: { children: React.ReactNode }) {
   const token = useAuthStore((s) => s.token);
   if (token) return <Navigate to="/" replace />;
   return <>{children}</>;
 }
 
-/* ─── App ────────────────────────────────────────────────── */
 export default function App() {
   return (
     <Suspense fallback={<PageLoader />}>
       <Routes>
         <Route element={<Layout />}>
-          {/* Public routes */}
           <Route index element={<HomePage />} />
           <Route path="tournaments" element={<TournamentBrowserPage />} />
           <Route
             path="tournaments/:tournamentId"
             element={<TournamentDetailPage />}
           />
+
           <Route
-            path="tournaments/:tournamentId/rounds/:roundNumber"
+            path="tournaments/:tournamentId/rounds"
             element={<RoundPairingsPage />}
           />
           <Route
@@ -87,10 +86,6 @@ export default function App() {
             element={<LeaderboardPage />}
           />
 
-          {/* Public user profile */}
-          <Route path="users/:userId" element={<ProfilePage />} />
-
-          {/* Auth routes — redirect away if already logged in */}
           <Route
             path="login"
             element={
@@ -108,7 +103,6 @@ export default function App() {
             }
           />
 
-          {/* Protected routes */}
           <Route
             path="dashboard"
             element={
@@ -118,6 +112,24 @@ export default function App() {
             }
           />
           <Route
+            path="create-tournament"
+            element={
+              <ProtectedRoute>
+                <CreateTournamentPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="tournaments/:tournamentId/manage"
+            element={
+              <ProtectedRoute>
+                <ManageRoundsPage />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Staff Routes */}
+          <Route
             path="staff"
             element={
               <ProtectedRoute>
@@ -125,10 +137,14 @@ export default function App() {
               </ProtectedRoute>
             }
           />
-          {/*
-            QR check-in deep-link: /tournaments/:tournamentId/checkin?token=xxx
-            Staff page reads the query param and pre-fills the token input.
-          */}
+          <Route
+            path="tournaments/:tournamentId/staff"
+            element={
+              <ProtectedRoute>
+                <StaffPanelPage />
+              </ProtectedRoute>
+            }
+          />
           <Route
             path="tournaments/:tournamentId/checkin"
             element={
@@ -138,13 +154,21 @@ export default function App() {
             }
           />
 
-          {/* Public info pages */}
           <Route path="contact" element={<ContactPage />} />
+          <Route path="users/:userId" element={<PublicProfilePage />} />
+          <Route
+            path="profile"
+            element={
+              <ProtectedRoute>
+                <ProfilePage />
+              </ProtectedRoute>
+            }
+          />
 
-          {/* 404 */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>
     </Suspense>
   );
 }
+// --- END OF FILE src/App.tsx ---

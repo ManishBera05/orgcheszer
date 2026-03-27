@@ -21,7 +21,7 @@ public class PlatformStatsService {
         return PlatformStatsDTO.builder()
                 .totalUsers(usersRepository.count())
                 .totalTournamentsOrganized(
-                        tournamentRepository.countByIsDemoFalse())
+                        tournamentRepository.countByStatusNotAndIsDemoFalse(TournamentStatus.DRAFT))
                 .totalGamesPlayed(
                         gameRepository.countByResultNot(GameResult.PENDING))
                 .liveTournaments(

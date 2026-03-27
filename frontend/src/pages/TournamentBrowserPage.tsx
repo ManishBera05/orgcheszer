@@ -398,8 +398,13 @@ export default function TournamentBrowserPage() {
 
   const currentTab = TABS.find((t) => t.key === activeTab)!;
 
+  const isSingleStatus = currentTab.statuses.length === 1;
   const queryParams: TournamentFilterParams = {
-    status: currentTab.statuses as any,
+    // Use statuses[] for multi-status tabs (Past = COMPLETED + CANCELLED)
+    // so the API layer fires parallel requests instead of sending an array param
+    ...(isSingleStatus
+      ? { status: currentTab.statuses[0] }
+      : { statuses: currentTab.statuses }),
     format: filters.format || undefined,
     type: filters.type || undefined,
     startDateFrom: filters.startDateFrom || undefined,

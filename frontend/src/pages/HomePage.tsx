@@ -2,6 +2,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Trophy, Plus, ArrowRight, ChevronRight } from "lucide-react";
 import { getAllTournaments } from "../api/tournaments";
+import { getPlatformStats } from "../api/stats";
 import { useAuth } from "../hooks/useAuth";
 
 import type { TournamentResponse } from "../types";
@@ -194,8 +195,12 @@ export default function HomePage() {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
 
-  // Fetch upcoming tournaments — backend will filter by status once param is supported
-  // TODO: when backend supports /api/tournaments?status=UPCOMING, this will auto-filter
+  const { data: stats } = useQuery({
+    queryKey: ["platform-stats"],
+    queryFn: getPlatformStats,
+    staleTime: 60_000,
+  });
+
   const { data: allTournaments, isLoading } = useQuery({
     queryKey: ["tournaments", "UPCOMING"],
     queryFn: () => getAllTournaments("UPCOMING"),
@@ -482,29 +487,26 @@ export default function HomePage() {
               ♜
             </div>
 
-            {/* Stats grid */}
-            {/* TODO: replace placeholder values with real data from /api/stats once endpoint is ready */}
+            {/* Stats grid — real data from /api/stats */}
             <div className="stats-grid">
-              <StatItem value="—" label="Total tournaments" />
-              <StatItem value="—" label="Registered players" />
               <StatItem
-                value="—"
+                value={stats ? String(stats.totalTournamentsOrganized) : "—"}
+                label="Total tournaments"
+              />
+              <StatItem
+                value={stats ? String(stats.totalUsers) : "—"}
+                label="Registered players"
+              />
+              <StatItem
+                value={stats ? String(stats.liveTournaments) : "—"}
                 label="Active tournaments →"
                 linkTo="/tournaments?tab=live"
               />
-              <StatItem value="—" label="Total games played" />
+              <StatItem
+                value={stats ? String(stats.totalGamesPlayed) : "—"}
+                label="Total games played"
+              />
             </div>
-
-            <p
-              style={{
-                fontSize: "0.75rem",
-                color: "var(--text-muted)",
-                textAlign: "center",
-                marginTop: "0.25rem",
-              }}
-            >
-              Live platform stats coming soon
-            </p>
           </div>
         </div>
       </section>

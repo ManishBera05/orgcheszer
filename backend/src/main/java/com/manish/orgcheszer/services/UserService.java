@@ -3,6 +3,7 @@ package com.manish.orgcheszer.services;
 import com.manish.orgcheszer.dtos.MyTournamentDTO;
 import com.manish.orgcheszer.dtos.OpponentDTO;
 import com.manish.orgcheszer.dtos.PublicUserProfileDTO;
+import com.manish.orgcheszer.dtos.UserDetailsDTO;
 import com.manish.orgcheszer.dtos.UserTournamentStatsDTO;
 import com.manish.orgcheszer.entities.Game;
 import com.manish.orgcheszer.entities.PlayerTournamentStats;
@@ -309,6 +310,19 @@ public class UserService {
         dto.setOpponents(opponents);
 
         return dto;
+    }
+
+    public UserDetailsDTO getMyProfile(){
+        Users currentUser = getCurrentUser();
+        return UserDetailsDTO.builder()
+                .firstName(currentUser.getFirstName())
+                .lastName(currentUser.getLastName())
+                .userId(currentUser.getId())
+                .email(currentUser.getEmail())
+                .mobileNo(currentUser.getMobileNo())
+                .date_of_birth(currentUser.getDob())
+                .fideId(currentUser.getFideId())
+                .build();
     }
 
     private Users getCurrentUser() {

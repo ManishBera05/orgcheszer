@@ -1,43 +1,54 @@
-/* ─── Auth ──────────────────────────────────────────────── */
+// --- START OF FILE src/types/index.ts ---
+/* ─── Shared pagination wrapper ──────────────────────────── */
+export interface Page<T> {
+  content: T[];
+  totalPages: number;
+  totalElements: number;
+  size: number;
+  number: number;
+  first: boolean;
+  last: boolean;
+  numberOfElements: number;
+  empty: boolean;
+}
 
+/* ─── Auth ──────────────────────────────────────────────── */
 export interface LoginRequest {
   email: string;
   password: string;
 }
-
 export interface RegisterRequest {
   firstName: string;
   lastName: string;
   email: string;
   password: string;
   mobileNo: string;
-  dob: string; // "YYYY-MM-DD"
+  dob: string;
   fideId?: string;
 }
-
 export interface AuthResponse {
   token: string;
   message: string;
 }
 
 /* ─── Tournament ─────────────────────────────────────────── */
-
 export type TournamentStatus =
+  | "DRAFT"
   | "UPCOMING"
   | "ONGOING"
   | "COMPLETED"
   | "CANCELLED";
-export type TournamentFormat = "SWISS" | "ROUND_ROBIN";
+export type TournamentFormat = "SWISS" | "ROUND_ROBIN" | "KNOCKOUT";
 
 export interface TournamentCreateRequest {
   tournamentName: string;
-  startDateTime: string; // ISO 8601 e.g. "2030-01-01T10:00:00"
+  startDateTime: string;
   numberOfRounds: number;
   maxParticipants: number;
   entryFee: number;
   description: string;
   location: string;
-  timeControl: string; // e.g. "90+30"
+  timeControl: string;
   format: TournamentFormat;
 }
 
@@ -54,6 +65,7 @@ export interface TournamentResponse {
   format: TournamentFormat;
   organizerName: string;
   organizerPhoneNumber: string;
+  checkedInPlayers: number;
   currentNumberOfParticipants: number;
   status: TournamentStatus;
 }
@@ -67,8 +79,17 @@ export interface TournamentPlayerDTO {
   checkInStatus: string;
 }
 
-/* ─── Matchmaking ─────────────────────────────────────────── */
+/* ─── Registration requests ──────────────────────────────── */
+export interface RegistrationRequestDTO {
+  requestId: string;
+  playerId: string;
+  playerName: string;
+  playerEloRating: number;
+  playerFideId: string;
+  requestedAt: string;
+}
 
+/* ─── Matchmaking ─────────────────────────────────────────── */
 export type GameResult =
   | "PENDING"
   | "WHITE_WINS"
@@ -78,6 +99,8 @@ export type GameResult =
 
 export interface GamePairingDTO {
   gameId: string;
+  whiteId?: string; // Added for profile linking (Requires Backend update)
+  blackId?: string; // Added for profile linking (Requires Backend update)
   whiteName: string;
   blackName: string;
   boardNumber: number;
@@ -87,10 +110,10 @@ export interface GamePairingDTO {
 export interface RoundPairingsResponse {
   roundNumber: number;
   pairings: GamePairingDTO[];
+  roundStatus: string;
 }
 
 /* ─── Leaderboard ─────────────────────────────────────────── */
-
 export interface LeaderboardEntryDTO {
   rank: number;
   playerID: string;
@@ -98,6 +121,7 @@ export interface LeaderboardEntryDTO {
   fideId: string;
   eloRating: number;
   score: number;
+  totalGamesPlayed: number;
   buchholz: number;
   buchholzCut1: number;
   sonnebornBerger: number;
@@ -105,23 +129,49 @@ export interface LeaderboardEntryDTO {
   numberOfWins: number;
 }
 
-/* ─── Staff Keys ──────────────────────────────────────────── */
-
+/* ─── Staff ───────────────────────────────────────────────── */
 export interface StaffKeyResponse {
   keyValue: string;
   used: boolean;
   createdAt: string;
   usedAt: string | null;
 }
+export interface StaffForTournamentResponse {
+  keyUsed: string;
+  name: string;
+  userID: string;
+}
 
 /* ─── User Profiles ───────────────────────────────────────── */
+export interface PublicUserProfileDTO {
+  userId: string;
+  firstName: string;
+  lastName: string;
+  eloRating: number;
+  fideId: string;
+  gamesPlayed: number;
+  gamesWon: number;
+  gamesLost: number;
+  gamesDrawn: number;
+  tournamentsPlayed: number;
+  tournamentsOrganized: number;
+  tournamentsStaffed: number;
+}
 
-export interface UserTournamentSummaryDTO {
+export interface MyTournamentDTO {
   tournamentId: string;
   tournamentName: string;
   format: TournamentFormat;
   status: TournamentStatus;
+  startDateTime: string;
+  location: string;
   role: string;
+  score: number;
+  finalRank: number | null;
+  gamesPlayed: number;
+  wins: number;
+  losses: number;
+  draws: number;
 }
 
 export interface OpponentDTO {
@@ -148,15 +198,17 @@ export interface UserTournamentStatsDTO {
   opponents: OpponentDTO[];
 }
 
-/* ─── Auth store shape (used by authStore + useAuth) ─────── */
-
+export interface PlatformStatsDTO {
+  totalUsers: number;
+  totalTournamentsOrganized: number;
+  totalGamesPlayed: number;
+  liveTournaments: number;
+}
 export interface AuthUser {
   token: string;
 }
-
-/* ─── API error shape ────────────────────────────────────── */
-
 export interface ApiError {
   message: string;
   status?: number;
 }
+// --- END OF FILE src/types/index.ts ---

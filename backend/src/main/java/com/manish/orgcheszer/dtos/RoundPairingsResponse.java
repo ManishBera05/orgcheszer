@@ -12,7 +12,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 public class RoundPairingsResponse {
-    private int                 roundNumber;
+    private int roundNumber;
     private List<GamePairingDTO> pairings;
     private String roundStatus; //PENDING, IN_PROGRESS, COMPLETED
 }
