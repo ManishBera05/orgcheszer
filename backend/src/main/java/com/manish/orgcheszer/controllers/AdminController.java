@@ -8,6 +8,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -62,5 +63,36 @@ public class AdminController {
         }
 
         return ResponseEntity.ok(tournamentService.getDraftTournaments());
+    }
+
+    // Delete a single draft tournament
+    @Operation(summary = "Delete a draft tournament",
+            security = @SecurityRequirement(name = "bearerAuth"))
+    @DeleteMapping("/tournaments/{tournamentId}/draft")
+    public ResponseEntity<String> deleteDraftTournament(
+            @PathVariable UUID tournamentId,
+            @RequestHeader("X-Admin-Key") String adminKey) {
+
+        if (!adminKey.equals(adminSecret)) {
+            throw new AccessDeniedException("Invalid admin key");
+        }
+
+        tournamentService.deleteDraftTournament(tournamentId);
+        return ResponseEntity.ok("Draft tournament deleted successfully");
+    }
+
+    // Delete ALL draft tournaments at once
+    @Operation(summary = "Delete all tournaments",
+            security = @SecurityRequirement(name = "bearerAuth"))
+    @DeleteMapping("/tournaments/drafts")
+    public ResponseEntity<String> deleteAllDraftTournaments(
+            @RequestHeader("X-Admin-Key") String adminKey) {
+
+        if (!adminKey.equals(adminSecret)) {
+            throw new AccessDeniedException("Invalid admin key");
+        }
+
+        tournamentService.deleteAllDraftTournaments();
+        return ResponseEntity.ok("All draft tournaments deleted successfully");
     }
 }

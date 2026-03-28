@@ -7,6 +7,7 @@ import com.manish.orgcheszer.enums.*;
 import com.manish.orgcheszer.repositories.*;
 import com.manish.orgcheszer.services.LeaderboardService;
 import com.manish.orgcheszer.services.MatchmakingService;
+import com.manish.orgcheszer.services.TournamentService;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -45,6 +46,7 @@ class SwissPairingSimulationTests {
     @Autowired private GameRepository             gameRepo;
     @Autowired private MatchmakingService         matchmakingService;
     @Autowired private LeaderboardService         leaderboardService;
+    @Autowired private TournamentService          tournamentService;
 
     // Shared state across test methods
     private static UUID tournamentId;
@@ -320,7 +322,9 @@ class SwissPairingSimulationTests {
         assertScore(9, 3.0);   // Anand
         assertScore(10, 2.0);  // Pragg
 
-        // Tournament should be auto-completed
+        // End the tournament
+        tournamentService.endTournament(tournamentId);
+        // Check if the tournament properly ended
         Tournament t = tournamentRepo.findById(tournamentId).orElseThrow();
         assertEquals(TournamentStatus.COMPLETED, t.getStatus());
     }

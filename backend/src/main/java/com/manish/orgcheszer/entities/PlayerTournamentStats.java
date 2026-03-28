@@ -61,7 +61,8 @@ public class PlayerTournamentStats {
     // For each player, sum up the current scores of every opponent they've faced.
     // Second tie-breaker priority for swiss tournaments
     private double buchholz;
-
+    private double buchholzCut2;    // Buchholz minus two lowest opponent scores
+    private double buchholzMedian;  // Buchholz minus highest AND lowest opponent scores
     /**
      *  First priority in the Round-robin tournament tie-breaker
      *  for each game: if you won, add your opponent's full score.

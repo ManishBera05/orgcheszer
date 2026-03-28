@@ -6,15 +6,19 @@ import com.manish.orgcheszer.dtos.TournamentPlayerDTO;
 import com.manish.orgcheszer.dtos.TournamentResponse;
 import com.manish.orgcheszer.entities.PlayerTournamentStats;
 import com.manish.orgcheszer.entities.RegistrationRequest;
+import com.manish.orgcheszer.entities.Rounds;
 import com.manish.orgcheszer.entities.Tournament;
 import com.manish.orgcheszer.entities.TournamentTicket;
 import com.manish.orgcheszer.entities.Users;
+import com.manish.orgcheszer.enums.GameResult;
 import com.manish.orgcheszer.enums.RegistrationRequestStatus;
 import com.manish.orgcheszer.enums.TicketStatus;
 import com.manish.orgcheszer.enums.TournamentFormat;
 import com.manish.orgcheszer.enums.TournamentStatus;
+import com.manish.orgcheszer.repositories.GameRepository;
 import com.manish.orgcheszer.repositories.PlayerTournamentStatsRepository;
 import com.manish.orgcheszer.repositories.RegistrationRequestRepository;
+import com.manish.orgcheszer.repositories.RoundsRepository;
 import com.manish.orgcheszer.repositories.TournamentRepository;
 import com.manish.orgcheszer.repositories.TournamentStaffRepository;
 import com.manish.orgcheszer.repositories.TournamentTicketRepository;
@@ -46,6 +50,9 @@ public class TournamentService {
     private final TournamentTicketService tournamentTicketService;
     private final TournamentTicketRepository ticketRepository;
     private final RegistrationRequestRepository registrationRequestRepository;
+    private final LeaderboardService leaderboardService;
+    private final RoundsRepository roundsRepository;
+    private final GameRepository gameRepository;
 
     @Value("${tournament.require-approval}")
     private boolean requireApproval;
@@ -125,6 +132,9 @@ public class TournamentService {
 
         if (tournament.getStatus() != TournamentStatus.UPCOMING) {
             throw new RuntimeException("Cannot update a tournament that has already started");
+        }
+        if(tournament.getPlayers().size() > request.getMaxParticipants()){
+            throw new RuntimeException("The number of registered players already more than the set max");
         }
 
         tournament.setTournamentName(request.getTournamentName());
@@ -261,7 +271,7 @@ public class TournamentService {
 
     // GET PENDING REQUESTS (organizer only)
 // ─────────────────────────────────────────────────────────────────────────────
-    public List<RegistrationRequestDTO> getPendingRequests(UUID tournamentId) {
+    public Page<RegistrationRequestDTO> getPendingRequests(UUID tournamentId, int page, int size) {
         Tournament tournament = tournamentRepository.findById(tournamentId)
                 .orElseThrow(() -> new RuntimeException("Tournament not found"));
 
@@ -271,10 +281,10 @@ public class TournamentService {
                     "Only the organizer can view registration requests");
         }
 
+        Pageable pageable = PageRequest.of(page, size, Sort.by("requestedAt").descending());
         return registrationRequestRepository
                 .findByTournamentTournamentIdAndStatus(
-                        tournamentId, RegistrationRequestStatus.PENDING)
-                .stream()
+                        tournamentId, RegistrationRequestStatus.PENDING, pageable)
                 .map(req -> RegistrationRequestDTO.builder()
                         .requestId(req.getId())
                         .playerId(req.getPlayer().getId())
@@ -283,8 +293,7 @@ public class TournamentService {
                         .playerEloRating(req.getPlayer().getEloRating())
                         .playerFideId(req.getPlayer().getFideId())
                         .requestedAt(req.getRequestedAt())
-                        .build())
-                .collect(Collectors.toList());
+                        .build());
     }
 
     // APPROVE REQUEST (organizer only)
@@ -448,12 +457,36 @@ public class TournamentService {
         return response;
     }
 
-    public List<TournamentPlayerDTO> getTournamentPlayers(UUID tournamentId) {
+    public Page<TournamentPlayerDTO> getTournamentPlayers(UUID tournamentId, int page, int size) {
         Tournament tournament = tournamentRepository.findById(tournamentId)
                 .orElseThrow(() -> new RuntimeException("Tournament not found"));
 
-        return tournament.getPlayers().stream()
-                .map(player -> {
+        Pageable pageable = PageRequest.of(page, size);
+
+//        return tournament.getPlayers().stream()
+//                .map(player -> {
+//                    TournamentTicket ticket = ticketRepository
+//                            .findByPlayerIdAndTournamentTournamentId(
+//                                    player.getId(), tournamentId)
+//                            .orElse(null);
+//
+//                    return TournamentPlayerDTO.builder()
+//                            .userId(player.getId())
+//                            .firstName(player.getFirstName())
+//                            .lastName(player.getLastName())
+//                            .eloRating(player.getEloRating())
+//                            .fideId(player.getFideId())
+//                            .checkInStatus(ticket != null
+//                                    ? ticket.getStatus().name()
+//                                    : "NOT_REGISTERED")
+//                            .build();
+//                })
+//                .collect(Collectors.toList());
+
+        return playerTournamentStatsRepository
+                .findByTournamentTournamentIdOrderByPairingId(tournamentId, pageable)
+                .map(stats -> {
+                    Users player = stats.getPlayer();
                     TournamentTicket ticket = ticketRepository
                             .findByPlayerIdAndTournamentTournamentId(
                                     player.getId(), tournamentId)
@@ -469,8 +502,7 @@ public class TournamentService {
                                     ? ticket.getStatus().name()
                                     : "NOT_REGISTERED")
                             .build();
-                })
-                .collect(Collectors.toList());
+                });
     }
 
     public void approveDraftTournament(UUID tournamentId){
@@ -511,7 +543,7 @@ public class TournamentService {
         stats.setPlayer(player);
         stats.setTournament(tournament);
         stats.setCurrentScore(0);
-        stats.setPairingId(pairingId);
+//        stats.setPairingId(pairingId);
         playerTournamentStatsRepository.save(stats);
 
         tournamentRepository.save(tournament);
@@ -524,5 +556,73 @@ public class TournamentService {
                 .playerName(player.getFirstName() + " " + player.getLastName())
                 .playerFideId(player.getFideId())
                 .build();
+    }
+
+    public void deleteDraftTournament(UUID tournamentId) {
+        Tournament tournament = tournamentRepository.findById(tournamentId)
+                .orElseThrow(() -> new RuntimeException("Tournament not found"));
+
+        if (tournament.getStatus() != TournamentStatus.DRAFT) {
+            throw new RuntimeException(
+                    "Cannot delete — tournament is not in DRAFT status");
+        }
+
+        tournamentRepository.delete(tournament);
+    }
+
+    public void deleteAllDraftTournaments() {
+        List<Tournament> drafts = tournamentRepository
+                .findByStatus(TournamentStatus.DRAFT);
+        tournamentRepository.deleteAll(drafts);
+    }
+
+    public void endTournament(UUID tournamentId) {
+        Users currentUser = getCurrentUser();
+        Tournament tournament = tournamentRepository.findById(tournamentId)
+                .orElseThrow(() -> new RuntimeException("Tournament not found"));
+
+        if (!tournament.getOrganizer().getId().equals(currentUser.getId())) {
+            throw new AccessDeniedException(
+                    "Only the organizer can end the tournament");
+        }
+        if (tournament.getStatus() != TournamentStatus.ONGOING) {
+            throw new RuntimeException(
+                    "Tournament is not ongoing — current status: "
+                            + tournament.getStatus());
+        }
+
+        List<Rounds> existingRounds = roundsRepository
+                .findByTournamentTournamentIdOrderByRoundNumber(tournamentId);
+
+        if (existingRounds.isEmpty()) {
+            throw new RuntimeException(
+                    "Cannot end — no rounds have been played yet");
+        }
+
+        Rounds latestRound = existingRounds.get(existingRounds.size() - 1);
+
+        boolean hasPendingGames = gameRepository
+                .findByRoundId(latestRound.getId())
+                .stream()
+                .anyMatch(g -> g.getResult() == null
+                        || g.getResult() == GameResult.PENDING);
+
+        if (hasPendingGames) {
+            throw new RuntimeException(
+                    "Cannot end tournament — round "
+                            + latestRound.getRoundNumber()
+                            + " still has unfinished games. "
+                            + "Submit all results first");
+        }
+
+        // Works whether called mid-tournament or after the last planned round
+        // numberOfRounds is always updated to actual rounds played
+        tournament.setNumberOfRounds(latestRound.getRoundNumber());
+        tournament.setStatus(TournamentStatus.COMPLETED);
+        tournamentRepository.save(tournament);
+
+        // Persist final rankings
+        leaderboardService.recalculateTiebreakers(tournamentId);
+        leaderboardService.getLeaderboard(tournamentId, 0, Integer.MAX_VALUE);
     }
 }

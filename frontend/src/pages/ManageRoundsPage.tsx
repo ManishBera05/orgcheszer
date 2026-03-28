@@ -19,6 +19,7 @@ import {
   ChevronRight,
   KeyRound,
   Users,
+  Flag,
 } from "lucide-react";
 import {
   getTournament,
@@ -26,6 +27,7 @@ import {
   approveRequest,
   rejectRequest,
   getTournamentStaffs,
+  endTournament,
 } from "../api/tournaments";
 import {
   getRoundPairings,
@@ -34,7 +36,7 @@ import {
   generateStaffKeys,
   getStaffKeys,
 } from "../api/matchmaking";
-import type { GamePairingDTO, GameResult } from "../types";
+import type { GamePairingDTO, GameResult, ApiError } from "../types";
 
 const RESULT_OPTIONS: { value: GameResult; label: string; color: string }[] = [
   { value: "WHITE_WINS", label: "White wins", color: "var(--camel-400)" },
@@ -59,7 +61,6 @@ function GameRow({
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
-  // ORGANIZER CAN EDIT AT ANY TIME - Never locked.
   const isSettled = false;
 
   useEffect(() => {
@@ -82,7 +83,7 @@ function GameRow({
         queryKey: ["pairings", tournamentId, roundNumber],
       });
     },
-    onError: (err: any) =>
+    onError: (err: ApiError) =>
       toast.error(err.message || "Failed to submit result."),
   });
 
@@ -110,7 +111,6 @@ function GameRow({
         >
           {game.boardNumber}
         </span>
-
         <Link
           to={`/users/${game.whiteId || game.whiteName}`}
           style={{
@@ -161,7 +161,6 @@ function GameRow({
         >
           B
         </span>
-
         {game.blackName === "BYE" ? (
           <em style={{ color: "var(--text-muted)", flex: 1 }}>BYE</em>
         ) : (
@@ -335,8 +334,18 @@ export default function ManageRoundsPage() {
       queryClient.invalidateQueries({ queryKey: ["pairings"] });
       setCurrentRound(latestGeneratedRound + 1);
     },
-    onError: (err: any) =>
+    onError: (err: ApiError) =>
       toast.error(err.message || "Failed to generate round."),
+  });
+
+  const endTourneyMut = useMutation({
+    mutationFn: () => endTournament(tournamentId!),
+    onSuccess: () => {
+      toast.success("Tournament successfully completed!");
+      queryClient.invalidateQueries({ queryKey: ["tournament"] });
+    },
+    onError: (err: ApiError) =>
+      toast.error(err.message || "Failed to end tournament."),
   });
 
   if (tLoading || currentRound === null)
@@ -365,11 +374,18 @@ export default function ManageRoundsPage() {
   const latestRoundPending = latestRoundPairings.filter(
     (g) => g.result === "PENDING",
   ).length;
-  // GENERATE LOCK: Only if current round is fully settled OR it is the very first generation.
+
+  // Only allow generate if latest round has NO pending games.
   const canGenerate =
     latestGeneratedRound === 0 ||
     (latestRoundPending === 0 &&
       latestGeneratedRound < tournament.numberOfRounds);
+
+  // Can end if the final round is generated and has no pending games.
+  const canEndTournament =
+    latestGeneratedRound === tournament.numberOfRounds &&
+    latestRoundPending === 0 &&
+    tournament.status !== "COMPLETED";
 
   return (
     <>
@@ -421,26 +437,70 @@ export default function ManageRoundsPage() {
           <ArrowLeft size={15} /> Back to Dashboard
         </Link>
 
-        <div style={{ marginBottom: "2rem" }}>
-          <h1
+        <div
+          style={{
+            marginBottom: "2rem",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "flex-start",
+            flexWrap: "wrap",
+            gap: "1rem",
+          }}
+        >
+          <div>
+            <h1
+              style={{
+                fontSize: "1.75rem",
+                fontWeight: 700,
+                color: "var(--text-primary)",
+                margin: "0 0 0.25rem",
+              }}
+            >
+              Manage Tournament
+            </h1>
+            <p
+              style={{
+                color: "var(--text-muted)",
+                fontSize: "0.9375rem",
+                margin: 0,
+              }}
+            >
+              {tournament.tournamentName}
+            </p>
+          </div>
+
+          {/* END TOURNAMENT BUTTON */}
+          <button
+            onClick={() => {
+              if (
+                confirm(
+                  "Are you sure you want to end this tournament? Final standings will be locked.",
+                )
+              )
+                endTourneyMut.mutate();
+            }}
+            disabled={!canEndTournament || endTourneyMut.isPending}
             style={{
-              fontSize: "1.75rem",
-              fontWeight: 700,
-              color: "var(--text-primary)",
-              margin: "0 0 0.25rem",
+              display: "flex",
+              alignItems: "center",
+              gap: "0.5rem",
+              padding: "0.75rem 1.25rem",
+              background: "var(--danger-bg)",
+              color: "var(--danger)",
+              border: "1px solid rgba(211,77,75,0.4)",
+              borderRadius: "8px",
+              fontWeight: 600,
+              cursor: !canEndTournament ? "not-allowed" : "pointer",
+              opacity: !canEndTournament ? 0.5 : 1,
             }}
           >
-            Manage Tournament
-          </h1>
-          <p
-            style={{
-              color: "var(--text-muted)",
-              fontSize: "0.9375rem",
-              margin: 0,
-            }}
-          >
-            {tournament.tournamentName}
-          </p>
+            {endTourneyMut.isPending ? (
+              <Loader2 size={16} className="animate-spin" />
+            ) : (
+              <Flag size={16} />
+            )}{" "}
+            End Tournament
+          </button>
         </div>
 
         <div
@@ -505,7 +565,7 @@ export default function ManageRoundsPage() {
                 </button>
               </div>
 
-              {/* GENERATE BUTTON */}
+              {/* GENERATE ROUND BUTTON */}
               <button
                 onClick={() => generateMut.mutate()}
                 disabled={
@@ -518,7 +578,7 @@ export default function ManageRoundsPage() {
                   display: "flex",
                   alignItems: "center",
                   gap: "0.5rem",
-                  padding: "0.625rem 1.25rem",
+                  padding: "0.75rem 1.25rem",
                   background: "var(--accent-cta)",
                   color: "var(--text-on-accent)",
                   border: "none",
@@ -636,21 +696,23 @@ export default function ManageRoundsPage() {
   );
 }
 
-// ... RequestsManager and KeysManager components from previous prompt remain the same.
 function RequestsManager({ tournamentId }: { tournamentId: string }) {
   const queryClient = useQueryClient();
-  const { data: requests, isLoading } = useQuery({
+  // UPDATED: Extracts content array from Page response
+  const { data: requestsPage, isLoading } = useQuery({
     queryKey: ["requests", tournamentId],
     queryFn: () => getPendingRequests(tournamentId),
     enabled: !!tournamentId,
   });
+  const requests = requestsPage?.content || [];
+
   const approveMut = useMutation({
     mutationFn: (id: string) => approveRequest(tournamentId, id),
     onSuccess: () => {
       toast.success("Approved!");
       queryClient.invalidateQueries({ queryKey: ["requests"] });
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: ApiError) => toast.error(e.message),
   });
   const rejectMut = useMutation({
     mutationFn: (id: string) => rejectRequest(tournamentId, id),
@@ -658,12 +720,12 @@ function RequestsManager({ tournamentId }: { tournamentId: string }) {
       toast.success("Rejected.");
       queryClient.invalidateQueries({ queryKey: ["requests"] });
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: ApiError) => toast.error(e.message),
   });
 
   if (isLoading)
     return <Loader2 size={20} className="animate-spin text-muted" />;
-  if (!requests || requests.length === 0)
+  if (requests.length === 0)
     return <p style={{ color: "var(--text-muted)" }}>No pending requests.</p>;
 
   return (
@@ -756,6 +818,7 @@ function KeysManager({ tournamentId }: { tournamentId: string }) {
       toast.success("Keys generated!");
       queryClient.invalidateQueries({ queryKey: ["staff-keys"] });
     },
+    onError: (e: ApiError) => toast.error(e.message),
   });
 
   if (kLoad || sLoad)

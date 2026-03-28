@@ -1,3 +1,4 @@
+// --- START OF FILE src/pages/LeaderboardPage.tsx ---
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -9,7 +10,6 @@ import type { LeaderboardEntryDTO, TournamentFormat } from "../types";
 
 const PAGE_SIZE = 50;
 
-/* ─── Column definitions per format ──────────────────────── */
 interface ColDef {
   key: keyof LeaderboardEntryDTO;
   label: string;
@@ -17,43 +17,51 @@ interface ColDef {
   width?: string;
 }
 
+// UPDATED SWISS COLS WITH NEW TIEBREAKERS
 const SWISS_COLS: ColDef[] = [
   { key: "score", label: "Score", title: "Total points (W=1, D=½, Bye=1)" },
+  { key: "directEncounterScore", label: "DE", title: "Direct Encounter" },
   {
     key: "buchholzCut1",
     label: "BH-1",
     title: "Buchholz Cut-1: Buchholz minus lowest-scoring opponent",
   },
   {
+    key: "buchholzCut2",
+    label: "BH-2",
+    title: "Buchholz Cut-2: Buchholz minus 2 lowest-scoring opponents",
+  },
+  {
+    key: "buchholzMedian",
+    label: "BH-M",
+    title: "Buchholz Median: Buchholz minus highest and lowest",
+  },
+  {
     key: "buchholz",
     label: "BH",
     title: "Buchholz: sum of all opponents' scores",
   },
-  {
-    key: "gamesWithBlack",
-    label: "Black",
-    title: "Games played with Black pieces",
-  },
+  { key: "sonnebornBerger", label: "SB", title: "Sonneborn-Berger" },
+  { key: "winsWithBlack", label: "W/B", title: "Wins with Black pieces" },
   { key: "numberOfWins", label: "Wins", title: "Number of wins" },
-  { key: "totalGamesPlayed", label: "Games", title: "Total games played" },
 ];
 
 const RR_COLS: ColDef[] = [
   { key: "score", label: "Score", title: "Total points (W=1, D=½)" },
+  { key: "directEncounterScore", label: "DE", title: "Direct Encounter" },
   {
     key: "sonnebornBerger",
     label: "SB",
     title: "Sonneborn-Berger: sum of defeated opponents' scores + ½ drawn",
   },
+  { key: "winsWithBlack", label: "W/B", title: "Wins with Black pieces" },
   { key: "numberOfWins", label: "Wins", title: "Number of wins" },
-  { key: "totalGamesPlayed", label: "Games", title: "Total games played" },
 ];
 
 function getCols(format?: TournamentFormat | string): ColDef[] {
   return format === "ROUND_ROBIN" ? RR_COLS : SWISS_COLS;
 }
 
-/* ─── Medal badge ─────────────────────────────────────────── */
 function RankBadge({ rank }: { rank: number }) {
   if (rank <= 3) {
     const medals = ["🥇", "🥈", "🥉"];
@@ -80,7 +88,6 @@ function RankBadge({ rank }: { rank: number }) {
   );
 }
 
-/* ─── Cell renderers ──────────────────────────────────────── */
 function ScoreCell({ v }: { v: number }) {
   return (
     <span
@@ -104,7 +111,7 @@ function TbCell({ v }: { v: number }) {
         fontVariantNumeric: "tabular-nums",
       }}
     >
-      {v.toFixed(1)}
+      {(v || 0).toFixed(1)}
     </span>
   );
 }
@@ -117,7 +124,7 @@ function IntCell({ v }: { v: number }) {
         fontVariantNumeric: "tabular-nums",
       }}
     >
-      {v}
+      {v || 0}
     </span>
   );
 }
@@ -127,13 +134,20 @@ function renderCell(
   entry: LeaderboardEntryDTO,
 ) {
   if (key === "score") return <ScoreCell v={entry.score} />;
-  if (key === "buchholz") return <TbCell v={entry.buchholz} />;
-  if (key === "buchholzCut1") return <TbCell v={entry.buchholzCut1} />;
-  if (key === "sonnebornBerger") return <TbCell v={entry.sonnebornBerger} />;
+  if (
+    [
+      "buchholz",
+      "buchholzCut1",
+      "buchholzCut2",
+      "buchholzMedian",
+      "sonnebornBerger",
+      "directEncounterScore",
+    ].includes(key)
+  )
+    return <TbCell v={entry[key] as number} />;
   return <IntCell v={entry[key] as number} />;
 }
 
-/* ─── Skeleton row ────────────────────────────────────────── */
 function SkeletonRow({ cols }: { cols: number }) {
   return (
     <tr>
@@ -155,7 +169,6 @@ function SkeletonRow({ cols }: { cols: number }) {
   );
 }
 
-/* ─── LeaderboardPage ─────────────────────────────────────── */
 export default function LeaderboardPage() {
   const { tournamentId } = useParams<{ tournamentId: string }>();
   const queryClient = useQueryClient();
@@ -204,41 +217,23 @@ export default function LeaderboardPage() {
         @keyframes spin      { to{transform:rotate(360deg)} }
         @keyframes tc-pulse  { 0%,100%{opacity:1}50%{opacity:0.35} }
 
-        .lb-page { max-width: 1000px; margin: 0 auto; padding: 2.5rem 1.5rem 5rem; animation: lb-fadeIn 300ms ease forwards; }
+        .lb-page { max-width: 1100px; margin: 0 auto; padding: 2.5rem 1.5rem 5rem; animation: lb-fadeIn 300ms ease forwards; }
         .lb-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 14px; background: var(--bg-surface); }
-        .lb-table { width: 100%; border-collapse: collapse; min-width: 480px; }
-        .lb-table thead th {
-          padding: 0.7rem 1rem;
-          font-size: 0.75rem; font-weight: 600;
-          color: var(--text-muted);
-          text-transform: uppercase; letter-spacing: 0.04em;
-          border-bottom: 1px solid var(--border);
-          background: var(--bg-elevated);
-          white-space: nowrap;
-        }
+        .lb-table { width: 100%; border-collapse: collapse; min-width: 600px; }
+        .lb-table thead th { padding: 0.7rem 1rem; font-size: 0.75rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; border-bottom: 1px solid var(--border); background: var(--bg-elevated); white-space: nowrap; }
         .lb-table thead th.right { text-align: right; }
         .lb-table thead th.left  { text-align: left;  }
-        .lb-table tbody tr {
-          animation: lb-rowIn 250ms ease forwards; opacity: 0;
-          transition: background 120ms ease;
-          border-bottom: 1px solid var(--border-subtle);
-        }
+        .lb-table tbody tr { animation: lb-rowIn 250ms ease forwards; opacity: 0; transition: background 120ms ease; border-bottom: 1px solid var(--border-subtle); }
         .lb-table tbody tr:hover { background: var(--bg-elevated); }
         .lb-table tbody tr:last-child { border-bottom: none; }
         .lb-table td { padding: 0.7rem 1rem; vertical-align: middle; }
         .lb-table td.right { text-align: right; }
 
-        .lb-player-link {
-          color: var(--text-primary);
-          text-decoration: none;
-          font-weight: 500;
-          font-size: 0.9rem;
-          transition: color 150ms ease;
-        }
+        .lb-player-link { color: var(--text-primary); text-decoration: none; font-weight: 500; font-size: 0.9rem; transition: color 150ms ease; }
         .lb-player-link:hover { color: var(--accent-cta); text-decoration: underline; }
 
         .lb-load-more { display: flex; flex-direction: column; align-items: center; gap: 0.625rem; margin-top: 2rem; padding-top: 2rem; border-top: 1px solid var(--border-subtle); }
-        .lb-btn-more { display: flex; align-items: center; gap: 0.5rem; padding: 0.625rem 1.5rem; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-surface); color: var(--text-secondary); font-size: 0.9375rem; font-weight: 500; font-family: var(--font-sans); cursor: pointer; transition: border-color 150ms ease, color 150ms ease; }
+        .lb-btn-more { display: flex; align-items: center; gap: 0.5rem; padding: 0.625rem 1.5rem; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-surface); color: var(--text-secondary); font-size: 0.9375rem; font-weight: 500; cursor: pointer; transition: border-color 150ms ease, color 150ms ease; }
         .lb-btn-more:hover  { border-color: var(--accent-cta); color: var(--accent-cta); }
         .lb-btn-more:disabled { opacity: 0.5; cursor: not-allowed; }
 
@@ -246,7 +241,6 @@ export default function LeaderboardPage() {
       `}</style>
 
       <div className="lb-page">
-        {/* ── Back ── */}
         <Link
           to={`/tournaments/${tournamentId}`}
           style={{
@@ -257,21 +251,11 @@ export default function LeaderboardPage() {
             fontSize: "0.875rem",
             textDecoration: "none",
             marginBottom: "1.5rem",
-            transition: "color 150ms ease",
           }}
-          onMouseEnter={(e) =>
-            ((e.currentTarget as HTMLAnchorElement).style.color =
-              "var(--text-primary)")
-          }
-          onMouseLeave={(e) =>
-            ((e.currentTarget as HTMLAnchorElement).style.color =
-              "var(--text-muted)")
-          }
         >
           <ArrowLeft size={15} /> Back to tournament
         </Link>
 
-        {/* ── Header ── */}
         <div
           style={{
             display: "flex",
@@ -364,21 +348,7 @@ export default function LeaderboardPage() {
               background: "transparent",
               color: "var(--text-muted)",
               fontSize: "0.875rem",
-              fontFamily: "var(--font-sans)",
               cursor: "pointer",
-              transition: "color 150ms ease, border-color 150ms ease",
-            }}
-            onMouseEnter={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.color =
-                "var(--text-primary)";
-              (e.currentTarget as HTMLButtonElement).style.borderColor =
-                "var(--border-strong)";
-            }}
-            onMouseLeave={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.color =
-                "var(--text-muted)";
-              (e.currentTarget as HTMLButtonElement).style.borderColor =
-                "var(--border)";
             }}
           >
             <RefreshCw
@@ -386,61 +356,11 @@ export default function LeaderboardPage() {
               style={{
                 animation: isFetching ? "spin 0.7s linear infinite" : "none",
               }}
-            />
+            />{" "}
             Refresh
           </button>
         </div>
 
-        {/* ── Tiebreaker legend ── */}
-        <div
-          style={{
-            display: "flex",
-            gap: "1rem",
-            flexWrap: "wrap",
-            marginBottom: "1.25rem",
-          }}
-        >
-          {cols
-            .filter((c) =>
-              ["buchholz", "buchholzCut1", "sonnebornBerger"].includes(
-                c.key as string,
-              ),
-            )
-            .map((c) => (
-              <div
-                key={c.key}
-                title={c.title}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "0.35rem",
-                  cursor: "help",
-                }}
-              >
-                <span
-                  style={{
-                    fontSize: "0.6875rem",
-                    fontWeight: 700,
-                    color: "var(--camel-600)",
-                    background: "var(--bg-elevated)",
-                    border: "1px solid var(--border)",
-                    padding: "0.1rem 0.4rem",
-                    borderRadius: "4px",
-                    letterSpacing: "0.04em",
-                  }}
-                >
-                  {c.label}
-                </span>
-                <span
-                  style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}
-                >
-                  {c.title.split(":")[0]}
-                </span>
-              </div>
-            ))}
-        </div>
-
-        {/* ── Table ── */}
         <div className="lb-wrap">
           <table className="lb-table">
             <thead>
@@ -550,7 +470,6 @@ export default function LeaderboardPage() {
           </table>
         </div>
 
-        {/* ── Load more ── */}
         {data && !data.last && rows.length > 0 && (
           <div className="lb-load-more">
             <p style={{ fontSize: "0.8125rem", color: "var(--text-muted)" }}>
@@ -592,3 +511,4 @@ export default function LeaderboardPage() {
     </>
   );
 }
+// --- END OF FILE src/pages/LeaderboardPage.tsx ---

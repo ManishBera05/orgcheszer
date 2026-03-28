@@ -51,6 +51,14 @@ public class LeaderboardEntryDTO {
             example = "9.25")
     private double sonnebornBerger;
 
+    private double buchholzCut2;
+
+    private double buchholzMedian;
+
+    private int winsWithBlack;
+
+    private double directEncounterScore;
+
     @Schema(description = "Number of times played with Black pieces (used for color balancing)",
             example = "2")
     private int gamesWithBlack;

@@ -88,10 +88,12 @@ public class TournamentController {
             description = "Fetches all the registered participants verify them for the payment",
             security = @SecurityRequirement(name = "bearerAuth"))
     @GetMapping("/{tournamentId}/requests")
-    public ResponseEntity<List<RegistrationRequestDTO>> getPendingRequests(
-            @PathVariable UUID tournamentId) {
+    public ResponseEntity<Page<RegistrationRequestDTO>> getPendingRequests(
+            @PathVariable UUID tournamentId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "50") int size) {
         return ResponseEntity.ok(
-                tournamentService.getPendingRequests(tournamentId));
+                tournamentService.getPendingRequests(tournamentId, page, size));
     }
 
     @Operation(summary = "Verify payment and grant the user to enter the tournament",
@@ -120,9 +122,23 @@ public class TournamentController {
     @Operation(summary = "Get registered players",
             description = "Public endpoint to see who is playing in a tournament.")
     @GetMapping("/{tournamentId}/players")
-    public ResponseEntity<List<TournamentPlayerDTO>> getTournamentPlayers(
+    public ResponseEntity<Page<TournamentPlayerDTO>> getTournamentPlayers(
+            @PathVariable UUID tournamentId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "50") int size) {
+        return ResponseEntity.ok(
+                tournamentService.getTournamentPlayers(tournamentId, page, size));
+    }
+
+    @Operation(summary = "End tournament",
+            description = "Ends the tournament in the current round(all games must end)",
+            security = @SecurityRequirement(name = "bearerAuth"))
+    @PatchMapping("/{tournamentId}/end-tournament")
+    public ResponseEntity<String> endTournament(
             @PathVariable UUID tournamentId) {
-        return ResponseEntity.ok(tournamentService.getTournamentPlayers(tournamentId));
+        tournamentService.endTournament(tournamentId);
+        return ResponseEntity.ok(
+                "Tournament ended early and marked as completed");
     }
 
     @Operation(summary = "Register for tournament",

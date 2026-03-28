@@ -1,6 +1,7 @@
 package com.manish.orgcheszer.repositories;
 
 import com.manish.orgcheszer.entities.PlayerTournamentStats;
+import com.manish.orgcheszer.entities.Users;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -30,5 +31,7 @@ public interface PlayerTournamentStatsRepository extends JpaRepository<PlayerTou
     long sumGamesPlayedByPlayerId(@Param("playerId") UUID playerId);
     Page<PlayerTournamentStats> findByPlayerId(UUID playerId, Pageable pageable);
     Optional<PlayerTournamentStats> findByPlayerIdAndTournamentTournamentId(UUID playerId, UUID tournamentId);
+    Page<PlayerTournamentStats> findByTournamentTournamentId(UUID tournamentId, Pageable pageable);
+    Page<PlayerTournamentStats> findByTournamentTournamentIdOrderByPairingId(UUID tournamentTournamentId, Pageable pageable);
     List<PlayerTournamentStats> findByTournamentTournamentIdOrderByCurrentScoreDesc(UUID tournamentId); // leaderboard
 }

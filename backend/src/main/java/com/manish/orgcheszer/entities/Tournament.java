@@ -2,6 +2,7 @@ package com.manish.orgcheszer.entities;
 
 import com.manish.orgcheszer.enums.TournamentFormat;
 import com.manish.orgcheszer.enums.TournamentStatus;
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -67,10 +68,10 @@ public class Tournament {
     @Column(name = "status", nullable = false)
     private TournamentStatus status;
 
-    @OneToMany(mappedBy = "tournament")
+    @OneToMany(mappedBy = "tournament" , cascade = CascadeType.ALL)
     private List<PlayerTournamentStats> playerTournamentStatsList;
 
-    @OneToMany(mappedBy = "tournament")
+    @OneToMany(mappedBy = "tournament" , cascade = CascadeType.ALL)
     private List<Rounds> roundsPlayed;
 
     @Column(name = "is_demo", nullable = false)
@@ -88,13 +89,13 @@ public class Tournament {
     )
     private List<Users> players;
 
-    @OneToMany(mappedBy = "tournament")
+    @OneToMany(mappedBy = "tournament", cascade = CascadeType.ALL)
     private List<TournamentStaff> staffs;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "tournament_organizer", nullable = false)
     private Users organizer;
 
-    @OneToMany(mappedBy = "tournament")
+    @OneToMany(mappedBy = "tournament", cascade = CascadeType.ALL)
     private List<TournamentTicket> tickets;
 }

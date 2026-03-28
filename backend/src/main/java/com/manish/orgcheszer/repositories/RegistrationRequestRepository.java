@@ -2,6 +2,8 @@ package com.manish.orgcheszer.repositories;
 
 import com.manish.orgcheszer.entities.RegistrationRequest;
 import com.manish.orgcheszer.enums.RegistrationRequestStatus;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -25,8 +27,8 @@ public interface RegistrationRequestRepository
             UUID tournamentId, RegistrationRequestStatus status);
 
     // Get all pending requests for a tournament (organizer view)
-    List<RegistrationRequest> findByTournamentTournamentIdAndStatus(
-            UUID tournamentId, RegistrationRequestStatus status);
+    Page<RegistrationRequest> findByTournamentTournamentIdAndStatus(
+            UUID tournamentId, RegistrationRequestStatus status, Pageable pageable);
 
     // Delete all requests for a tournament (on cancel or tournament start)
     void deleteAllByTournamentTournamentId(UUID tournamentId);

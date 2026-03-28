@@ -52,6 +52,9 @@ public class MatchmakingService {
                         g.getBlackPlayer() != null
                                 ? g.getBlackPlayer().getFirstName() + " " + g.getBlackPlayer().getLastName()
                                 : "BYE",
+                        g.getWhitePlayer().getId(),
+                        g.getBlackPlayer() != null
+                                ? g.getBlackPlayer().getId(): new UUID(0,0),
                         g.getBoardNumber(),
                         g.getResult() != null ? g.getResult().name() : "PENDING"))
                 .collect(Collectors.toList());
@@ -97,7 +100,7 @@ public class MatchmakingService {
 
         // checks whether all the games result is mentioned
         if (!existingRounds.isEmpty()) {
-            Rounds lastRound = existingRounds.get(existingRounds.size() - 1);
+            Rounds lastRound = existingRounds.getLast();
             boolean hasUnfinishedGames = gameRepository
                     .findByRoundId(lastRound.getId())
                     .stream()
@@ -138,7 +141,7 @@ public class MatchmakingService {
                 .findByTournamentTournamentIdOrderByCurrentScoreDesc(tournamentId)
                 .stream()
                 .filter(s -> checkedInIds.contains(s.getPlayer().getId()))
-                .collect(Collectors.toList());
+                .toList();
 
         // Build pairing ID map: UUID → pairingId (1-based, sorted by rating DESC) required for the JaVaFo API
         // This must be consistent every round, sort by rating then by UUID for stability
@@ -146,12 +149,12 @@ public class MatchmakingService {
         sortedByRating.sort(Comparator
                 .comparingInt((PlayerTournamentStats s) -> s.getPlayer().getEloRating())
                 .reversed()
-                .thenComparing(s -> s.getPlayer().getId().toString()));
+                .thenComparing(PlayerTournamentStats::getPairingId));
 
         // Use permanently stored pairingIds — no sorting needed
         Map<UUID, Integer> pairingIdMap = new LinkedHashMap<>();
-        for (PlayerTournamentStats s : allStats) {
-            pairingIdMap.put(s.getPlayer().getId(), s.getPairingId());
+        for (int i = 0; i < sortedByRating.size(); i++) {
+            pairingIdMap.put(sortedByRating.get(i).getPlayer().getId(), i + 1);
         }
 
         List<PlayerStanding> standings = allStats.stream()
@@ -302,7 +305,7 @@ public class MatchmakingService {
         updatePlayerScore(game.getBlackPlayer().getId(), tournamentId, result, false);
 
         leaderboardService.recalculateTiebreakers(tournamentId);
-        checkAndFinalizeTournament(tournament);
+//        checkAndFinalizeTournament(tournament);
     }
 
     // PRIVATE HELPER METHODS
@@ -482,7 +485,7 @@ public class MatchmakingService {
                 .stream()
                 .filter(s -> checkedInIds.contains(s.getPlayer().getId()))
                 .map(s -> s.getPlayer().getId())
-                .collect(Collectors.toList());
+                .toList();
 
         Set<String> playedPairs = roundsRepository
                 .findByTournamentTournamentIdOrderByRoundNumber(tournamentId)
@@ -515,21 +518,21 @@ public class MatchmakingService {
         return a.compareTo(b) < 0 ? a + "_" + b : b + "_" + a;
     }
 
-    private void checkAndFinalizeTournament(Tournament tournament) {
-        List<Rounds> allRounds = roundsRepository
-                .findByTournamentTournamentIdOrderByRoundNumber(tournament.getTournamentId());
-
-        if (allRounds.size() < tournament.getNumberOfRounds()) return;
-
-        boolean allComplete = allRounds.stream()
-                .flatMap(r -> gameRepository.findByRoundId(r.getId()).stream())
-                .allMatch(g -> g.getResult() != null && g.getResult() != GameResult.PENDING);
-
-        if (allComplete) {
-            tournament.setStatus(TournamentStatus.COMPLETED);
-            tournamentRepository.save(tournament);
-        }
-    }
+//    private void checkAndFinalizeTournament(Tournament tournament) {
+//        List<Rounds> allRounds = roundsRepository
+//                .findByTournamentTournamentIdOrderByRoundNumber(tournament.getTournamentId());
+//
+//        if (allRounds.size() < tournament.getNumberOfRounds()) return;
+//
+//        boolean allComplete = allRounds.stream()
+//                .flatMap(r -> gameRepository.findByRoundId(r.getId()).stream())
+//                .allMatch(g -> g.getResult() != null && g.getResult() != GameResult.PENDING);
+//
+//        if (allComplete) {
+//            tournament.setStatus(TournamentStatus.COMPLETED);
+//            tournamentRepository.save(tournament);
+//        }
+//    }
 
     private Users getCurrentUser() {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();

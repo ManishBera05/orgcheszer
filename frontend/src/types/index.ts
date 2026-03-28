@@ -1,5 +1,4 @@
 // --- START OF FILE src/types/index.ts ---
-/* ─── Shared pagination wrapper ──────────────────────────── */
 export interface Page<T> {
   content: T[];
   totalPages: number;
@@ -12,7 +11,6 @@ export interface Page<T> {
   empty: boolean;
 }
 
-/* ─── Auth ──────────────────────────────────────────────── */
 export interface LoginRequest {
   email: string;
   password: string;
@@ -31,7 +29,6 @@ export interface AuthResponse {
   message: string;
 }
 
-/* ─── Tournament ─────────────────────────────────────────── */
 export type TournamentStatus =
   | "DRAFT"
   | "UPCOMING"
@@ -79,7 +76,6 @@ export interface TournamentPlayerDTO {
   checkInStatus: string;
 }
 
-/* ─── Registration requests ──────────────────────────────── */
 export interface RegistrationRequestDTO {
   requestId: string;
   playerId: string;
@@ -89,7 +85,6 @@ export interface RegistrationRequestDTO {
   requestedAt: string;
 }
 
-/* ─── Matchmaking ─────────────────────────────────────────── */
 export type GameResult =
   | "PENDING"
   | "WHITE_WINS"
@@ -99,8 +94,8 @@ export type GameResult =
 
 export interface GamePairingDTO {
   gameId: string;
-  whiteId?: string; // Added for profile linking (Requires Backend update)
-  blackId?: string; // Added for profile linking (Requires Backend update)
+  whiteId?: string;
+  blackId?: string;
   whiteName: string;
   blackName: string;
   boardNumber: number;
@@ -113,7 +108,6 @@ export interface RoundPairingsResponse {
   roundStatus: string;
 }
 
-/* ─── Leaderboard ─────────────────────────────────────────── */
 export interface LeaderboardEntryDTO {
   rank: number;
   playerID: string;
@@ -127,9 +121,13 @@ export interface LeaderboardEntryDTO {
   sonnebornBerger: number;
   gamesWithBlack: number;
   numberOfWins: number;
+  // NEW TIEBREAKERS
+  buchholzCut2?: number;
+  buchholzMedian?: number;
+  winsWithBlack?: number;
+  directEncounterScore?: number;
 }
 
-/* ─── Staff ───────────────────────────────────────────────── */
 export interface StaffKeyResponse {
   keyValue: string;
   used: boolean;
@@ -142,7 +140,6 @@ export interface StaffForTournamentResponse {
   userID: string;
 }
 
-/* ─── User Profiles ───────────────────────────────────────── */
 export interface PublicUserProfileDTO {
   userId: string;
   firstName: string;

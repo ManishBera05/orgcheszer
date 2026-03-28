@@ -265,11 +265,15 @@ export default function TournamentDetailPage() {
     queryFn: () => getTournament(tournamentId!),
     enabled: !!tournamentId,
   });
-  const { data: players = [] } = useQuery({
+
+  // UPDATED: Destructure the Page object from the new endpoint
+  const { data: playersPage } = useQuery({
     queryKey: ["tournament-players", tournamentId],
     queryFn: () => getTournamentPlayers(tournamentId!),
     enabled: !!tournamentId,
   });
+  const players = playersPage?.content || [];
+
   const { data: myHistory } = useQuery({
     queryKey: ["my-history"],
     queryFn: () => getMyTournamentHistory({ size: 100 }),
@@ -634,7 +638,7 @@ export default function TournamentDetailPage() {
             )}
 
             <Section
-              title={`Registered players (${players.length})`}
+              title={`Registered players (${playersPage?.totalElements || 0})`}
               icon={<Users size={16} />}
             >
               {players.length === 0 ? (

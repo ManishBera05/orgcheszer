@@ -25,6 +25,10 @@ public class GamePairingDTO {
             example = "Nakamura, Hikaru")
     private String blackName;
 
+    private UUID whiteId;
+
+    private UUID blackId;
+
     @Schema(description = "Physical table number",
             example = "1")
     private int boardNumber;

@@ -6,6 +6,7 @@ import com.manish.orgcheszer.entities.Tournament;
 import com.manish.orgcheszer.entities.Users;
 import com.manish.orgcheszer.enums.TournamentFormat;
 import com.manish.orgcheszer.repositories.PlayerTournamentStatsRepository;
+import com.manish.orgcheszer.repositories.RoundsRepository;
 import com.manish.orgcheszer.repositories.TournamentRepository;
 import com.manish.orgcheszer.services.LeaderboardService;
 import org.junit.jupiter.api.BeforeEach;
@@ -31,6 +32,7 @@ class LeaderboardServiceTest {
 
     @Mock private TournamentRepository tournamentRepository;
     @Mock private PlayerTournamentStatsRepository statsRepository;
+    @Mock private RoundsRepository roundsRepository;
 
     @InjectMocks
     private LeaderboardService leaderboardService;
