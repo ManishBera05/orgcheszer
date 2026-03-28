@@ -186,7 +186,7 @@ public class MatchmakingService {
                         "No valid pairings possible — all players have already played each other. " +
                                 "Tournament finalized at round " + (nextRoundNumber - 1));
             }
-            throw new RuntimeException("Pairing engine returned no pairings — check TRF file format");
+            throw new RuntimeException("Pairing engine returned no pairings, check TRF file format");
         }
 
         Rounds newRound = new Rounds();

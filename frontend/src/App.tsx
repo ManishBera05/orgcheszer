@@ -17,6 +17,7 @@ const OrganizerDashboardPage = lazy(
   () => import("./pages/OrganizerDashboardPage"),
 );
 const CreateTournamentPage = lazy(() => import("./pages/CreateTournamentPage"));
+const UpdateTournamentPage = lazy(() => import("./pages/UpdateTournamentPage")); // NEW
 const ManageRoundsPage = lazy(() => import("./pages/ManageRoundsPage"));
 const StaffPanelPage = lazy(() => import("./pages/StaffPanelPage"));
 const ProfilePage = lazy(() => import("./pages/ProfilePage"));
@@ -119,6 +120,16 @@ export default function App() {
               </ProtectedRoute>
             }
           />
+
+          {/* NEW UPDATE ROUTE */}
+          <Route
+            path="tournaments/:tournamentId/update"
+            element={
+              <ProtectedRoute>
+                <UpdateTournamentPage />
+              </ProtectedRoute>
+            }
+          />
           <Route
             path="tournaments/:tournamentId/manage"
             element={
@@ -128,7 +139,6 @@ export default function App() {
             }
           />
 
-          {/* Staff Routes */}
           <Route
             path="staff"
             element={

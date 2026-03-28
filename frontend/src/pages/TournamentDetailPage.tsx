@@ -1,5 +1,5 @@
 // --- START OF FILE src/pages/TournamentDetailPage.tsx ---
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -254,7 +254,10 @@ export default function TournamentDetailPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { isAuthenticated } = useAuth();
+
   const [requestPending, setRequestPending] = useState(false);
+  const [playerPage, setPlayerPage] = useState(0);
+  const [playersList, setPlayersList] = useState<TournamentPlayerDTO[]>([]);
 
   const {
     data: tournament,
@@ -266,20 +269,25 @@ export default function TournamentDetailPage() {
     enabled: !!tournamentId,
   });
 
-  // UPDATED: Destructure the Page object from the new endpoint
-  const { data: playersPage } = useQuery({
-    queryKey: ["tournament-players", tournamentId],
-    queryFn: () => getTournamentPlayers(tournamentId!),
+  // Players Pagination Logic
+  const { data: playersPageData, isFetching: isFetchingPlayers } = useQuery({
+    queryKey: ["tournament-players", tournamentId, playerPage],
+    queryFn: () => getTournamentPlayers(tournamentId!, playerPage, 50),
     enabled: !!tournamentId,
   });
-  const players = playersPage?.content || [];
+
+  useEffect(() => {
+    if (playersPageData) {
+      if (playerPage === 0) setPlayersList(playersPageData.content);
+      else setPlayersList((prev) => [...prev, ...playersPageData.content]);
+    }
+  }, [playersPageData, playerPage]);
 
   const { data: myHistory } = useQuery({
     queryKey: ["my-history"],
     queryFn: () => getMyTournamentHistory({ size: 100 }),
     enabled: isAuthenticated,
   });
-
   const myRole = myHistory?.content.find(
     (t) => t.tournamentId === tournamentId,
   )?.role;
@@ -359,6 +367,9 @@ export default function TournamentDetailPage() {
         .td-btn-join:disabled { cursor: not-allowed; opacity: 0.8; background: var(--bg-elevated); color: var(--text-muted); border: 1px solid var(--border); }
         .td-action-link { display: flex; align-items: center; justify-content: space-between; padding: 0.8rem 1rem; border-radius: 10px; border: 1px solid var(--border); background: var(--bg-base); text-decoration: none; color: var(--text-secondary); font-weight: 500; transition: 150ms; }
         .td-action-link:hover { border-color: var(--accent-cta); background: var(--accent-subtle); color: var(--text-primary); }
+        .td-load-more { width: 100%; padding: 0.75rem; margin-top: 1rem; background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 8px; color: var(--text-secondary); font-size: 0.875rem; font-weight: 500; cursor: pointer; transition: 150ms; display: flex; align-items: center; justify-content: center; gap: 0.5rem; }
+        .td-load-more:hover:not(:disabled) { border-color: var(--accent-cta); color: var(--text-primary); }
+        .td-load-more:disabled { opacity: 0.5; cursor: not-allowed; }
         @media (max-width: 860px) { .td-layout { grid-template-columns: 1fr; } .td-right { position: static; order: -1; } }
       `}</style>
       <div className="td-page">
@@ -638,10 +649,10 @@ export default function TournamentDetailPage() {
             )}
 
             <Section
-              title={`Registered players (${playersPage?.totalElements || 0})`}
+              title={`Registered players (${playersPageData?.totalElements || 0})`}
               icon={<Users size={16} />}
             >
-              {players.length === 0 ? (
+              {playersList.length === 0 ? (
                 <p
                   style={{
                     fontSize: "0.875rem",
@@ -653,9 +664,26 @@ export default function TournamentDetailPage() {
                 </p>
               ) : (
                 <div>
-                  {players.map((p, i) => (
+                  {playersList.map((p, i) => (
                     <PlayerRow key={p.userId} p={p} rank={i + 1} />
                   ))}
+
+                  {playersPageData && !playersPageData.last && (
+                    <button
+                      className="td-load-more"
+                      onClick={() => setPlayerPage((p) => p + 1)}
+                      disabled={isFetchingPlayers}
+                    >
+                      {isFetchingPlayers ? (
+                        <>
+                          <Loader2 size={14} className="animate-spin" />{" "}
+                          Loading...
+                        </>
+                      ) : (
+                        "Load more players"
+                      )}
+                    </button>
+                  )}
                 </div>
               )}
             </Section>

@@ -1,22 +1,20 @@
 // --- START OF FILE src/pages/OrganizerDashboardPage.tsx ---
 import { useNavigate } from "react-router-dom";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
+import { useQuery } from "@tanstack/react-query";
 import {
   LayoutDashboard,
   Plus,
   Settings,
-  XCircle,
+  Edit3,
   Loader2,
   Trophy,
 } from "lucide-react";
-import { getTournament, cancelTournament } from "../api/tournaments";
+import { getTournament } from "../api/tournaments";
 import { getMyTournamentHistory } from "../api/users";
 import TournamentCard from "../components/TournamentCard";
 
 export default function OrganizerDashboardPage() {
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
 
   const { data: historyPage, isLoading: loadingHistory } = useQuery({
     queryKey: ["my-organizer-tournaments"],
@@ -38,24 +36,12 @@ export default function OrganizerDashboardPage() {
   const isLoading =
     loadingHistory || (historyPage?.content?.length! > 0 && loadingFull);
 
-  const cancelMutation = useMutation({
-    mutationFn: cancelTournament,
-    onSuccess: () => {
-      toast.success("Tournament cancelled.");
-      queryClient.invalidateQueries({ queryKey: ["my-full-tournaments"] });
-      queryClient.invalidateQueries({ queryKey: ["my-organizer-tournaments"] });
-    },
-    onError: (err: any) =>
-      toast.error(err.message || "Failed to cancel tournament"),
-  });
-
   return (
     <>
       <style>{`
         .org-action-btn { display: inline-flex; align-items: center; gap: 0.375rem; justify-content: center; padding: 0.5rem 0.75rem; border-radius: 6px; font-size: 0.8125rem; font-weight: 600; cursor: pointer; border: 1px solid var(--border); background: var(--bg-surface); color: var(--text-secondary); transition: all 150ms; }
         .org-action-btn:hover:not(:disabled) { border-color: var(--border-strong); color: var(--text-primary); }
         .org-action-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-        .org-action-danger:hover:not(:disabled) { border-color: rgba(211,77,75,0.4); color: var(--danger); background: rgba(211,77,75,0.05); }
         .org-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); gap: 1.25rem; }
       `}</style>
       <div
@@ -191,16 +177,17 @@ export default function OrganizerDashboardPage() {
                       justifyContent: "space-between",
                     }}
                   >
+                    {/* NEW UPDATE BUTTON (Disabled if locked) */}
                     <button
-                      className="org-action-btn org-action-danger"
-                      disabled={isLocked || cancelMutation.isPending}
+                      className="org-action-btn"
+                      disabled={isLocked}
                       onClick={() =>
-                        confirm("Cancel this tournament?") &&
-                        cancelMutation.mutate(t.tournamentId)
+                        navigate(`/tournaments/${t.tournamentId}/update`)
                       }
                     >
-                      <XCircle size={14} /> Cancel
+                      <Edit3 size={14} /> Update
                     </button>
+
                     <button
                       className="org-action-btn"
                       onClick={() =>

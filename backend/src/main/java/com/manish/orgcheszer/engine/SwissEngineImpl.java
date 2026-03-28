@@ -64,6 +64,10 @@ public class SwissEngineImpl implements PairingEngine {
         // Capture JaVaFo output
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
 
+        // Check the correctness of the tournamnet before generating the output
+//        String checkerOutput = JaVaFoApi.exec(1200,inputStream);
+//        System.out.println(checkerOutput);
+
         // Call JaVaFo — second arg is ignored per the API docs
         JaVaFoApi.exec(1000, "OrgCheszer", inputStream, outputStream);
 

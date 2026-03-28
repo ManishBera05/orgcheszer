@@ -37,21 +37,23 @@ import {
 import TournamentCard from "../components/TournamentCard";
 import type { GamePairingDTO, GameResult, ApiError } from "../types";
 
+// Removed BYE from manual options
 const RESULT_OPTIONS: { value: GameResult; label: string; color: string }[] = [
   { value: "WHITE_WINS", label: "White wins", color: "var(--camel-400)" },
   { value: "BLACK_WINS", label: "Black wins", color: "var(--camel-400)" },
   { value: "DRAW", label: "Draw", color: "var(--text-secondary)" },
-  { value: "BYE", label: "Bye", color: "var(--text-muted)" },
 ];
 
 function GameRow({
   game,
   tournamentId,
   roundNumber,
+  isLocked,
 }: {
   game: GamePairingDTO;
   tournamentId: string;
   roundNumber: number;
+  isLocked: boolean;
 }) {
   const queryClient = useQueryClient();
   const [selected, setSelected] = useState<GameResult | "">(
@@ -60,7 +62,8 @@ function GameRow({
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
-  const isSettled = game.result !== "PENDING";
+  // STAFF LOCK: Locked if parent locks it (past round) OR if game is already settled
+  const isSettled = isLocked || game.result !== "PENDING";
 
   useEffect(() => {
     const h = (e: MouseEvent) => {
@@ -86,9 +89,12 @@ function GameRow({
       toast.error(err.message || "Failed to submit result."),
   });
 
-  const currentLabel = selected
-    ? (RESULT_OPTIONS.find((o) => o.value === selected)?.label ?? selected)
-    : "Select result";
+  const currentLabel =
+    selected === "BYE"
+      ? "Bye"
+      : selected
+        ? (RESULT_OPTIONS.find((o) => o.value === selected)?.label ?? selected)
+        : "Select result";
 
   return (
     <div className={`sp-game-row ${isSettled ? "settled" : ""}`}>
@@ -131,7 +137,6 @@ function GameRow({
         >
           {game.whiteName}
         </Link>
-
         <span
           style={{
             fontSize: "0.75rem",
@@ -401,7 +406,6 @@ export default function StaffPanelPage() {
   );
   const [currentRound, setCurrentRound] = useState<number | null>(null);
 
-  // ── 1. Fetch Staff History & Full Tournament Details ──
   const { data: historyPage, isLoading: loadingHistory } = useQuery({
     queryKey: ["my-staff-tournaments"],
     queryFn: () => getMyTournamentHistory({ role: "STAFF", size: 100 }),
@@ -422,14 +426,12 @@ export default function StaffPanelPage() {
   const isLoadingStaffList =
     loadingHistory || (historyPage?.content?.length! > 0 && loadingFull);
 
-  // ── 2. Fetch Selected Tournament (if managing one) ──
   const { data: activeTournament, isLoading: tLoading } = useQuery({
     queryKey: ["tournament", tournamentId],
     queryFn: () => getTournament(tournamentId!),
     enabled: !!tournamentId,
   });
 
-  // ── 3. Find latest round logic ──
   const roundQueries = useQueries({
     queries: Array.from({ length: activeTournament?.numberOfRounds || 0 }).map(
       (_, i) => ({
@@ -483,6 +485,10 @@ export default function StaffPanelPage() {
 
   const canGoNext = round < latestGeneratedRound;
   const canGoPrev = round > 1;
+  const isRoundLocked =
+    round < latestGeneratedRound ||
+    activeTournament?.status === "COMPLETED" ||
+    activeTournament?.status === "CANCELLED";
 
   return (
     <>
@@ -510,7 +516,6 @@ export default function StaffPanelPage() {
           padding: "2.5rem 1.5rem 5rem",
         }}
       >
-        {/* VIEW 1: STAFF DASHBOARD (NO TOURNAMENT SELECTED) */}
         {!tournamentId ? (
           <>
             <div
@@ -676,7 +681,6 @@ export default function StaffPanelPage() {
             )}
           </>
         ) : (
-          /* VIEW 2: STAFF MANAGE TOURNAMENT (TOURNAMENT SELECTED) */
           <>
             <Link
               to="/staff"
@@ -844,6 +848,7 @@ export default function StaffPanelPage() {
                                 game={game}
                                 tournamentId={tournamentId}
                                 roundNumber={round}
+                                isLocked={isRoundLocked}
                               />
                             ))}
                         </>
