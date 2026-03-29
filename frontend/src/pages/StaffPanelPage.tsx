@@ -62,8 +62,9 @@ function GameRow({
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
-  // STAFF LOCK: Locked if parent locks it (past round) OR if game is already settled
-  const isSettled = isLocked || game.result !== "PENDING";
+  // FIX: Permanently lock the row if it's a BYE.
+  const isBye = game.result === "BYE" || game.blackName === "BYE";
+  const isSettled = isLocked || game.result !== "PENDING" || isBye;
 
   useEffect(() => {
     const h = (e: MouseEvent) => {
@@ -89,15 +90,16 @@ function GameRow({
       toast.error(err.message || "Failed to submit result."),
   });
 
-  const currentLabel =
-    selected === "BYE"
-      ? "Bye"
-      : selected
-        ? (RESULT_OPTIONS.find((o) => o.value === selected)?.label ?? selected)
-        : "Select result";
+  const currentLabel = isBye
+    ? "Bye"
+    : selected
+      ? (RESULT_OPTIONS.find((o) => o.value === selected)?.label ?? selected)
+      : "Select result";
 
   return (
-    <div className={`sp-game-row ${isSettled ? "settled" : ""}`}>
+    <div
+      className={`sp-game-row ${game.result !== "PENDING" ? "settled" : ""}`}
+    >
       <div className="sp-game-players">
         <span
           style={{
@@ -137,6 +139,7 @@ function GameRow({
         >
           {game.whiteName}
         </Link>
+
         <span
           style={{
             fontSize: "0.75rem",
@@ -151,7 +154,11 @@ function GameRow({
         </span>
         <Swords
           size={13}
-          style={{ color: "var(--border-strong)", margin: "0 0.5rem" }}
+          style={{
+            color: "var(--border-strong)",
+            margin: "0 0.5rem",
+            flexShrink: 0,
+          }}
         />
         <span
           style={{
@@ -166,7 +173,7 @@ function GameRow({
           B
         </span>
 
-        {game.blackName === "BYE" ? (
+        {isBye ? (
           <em style={{ color: "var(--text-muted)", flex: 1 }}>BYE</em>
         ) : (
           <Link
@@ -237,7 +244,7 @@ function GameRow({
           )}
         </button>
 
-        {open && (
+        {open && !isSettled && (
           <div
             style={{
               position: "absolute",
@@ -481,7 +488,6 @@ export default function StaffPanelPage() {
     activePairings?.pairings.filter((g) => g.result === "PENDING") ?? [];
   const settledGames =
     activePairings?.pairings.filter((g) => g.result !== "PENDING") ?? [];
-  const hasPairings = activePairings && activePairings.pairings.length > 0;
 
   const canGoNext = round < latestGeneratedRound;
   const canGoPrev = round > 1;
@@ -697,7 +703,7 @@ export default function StaffPanelPage() {
               <ArrowLeft size={15} /> Back to Staff Dashboard
             </Link>
 
-            {tLoading ? (
+            {tLoading || currentRound === null ? (
               <div style={{ textAlign: "center", padding: "4rem" }}>
                 <Loader2
                   size={24}
@@ -794,7 +800,7 @@ export default function StaffPanelPage() {
                         borderRadius: "14px",
                       }}
                     >
-                      {isRoundLoading || currentRound === null ? (
+                      {isRoundLoading ? (
                         <div style={{ padding: "4rem", textAlign: "center" }}>
                           <Loader2
                             size={24}
@@ -802,7 +808,8 @@ export default function StaffPanelPage() {
                             style={{ margin: "0 auto" }}
                           />
                         </div>
-                      ) : !hasPairings ? (
+                      ) : !activePairings ||
+                        activePairings.pairings.length === 0 ? (
                         <div style={{ padding: "3rem", textAlign: "center" }}>
                           <p style={{ color: "var(--text-muted)" }}>
                             Round {round} not generated yet.

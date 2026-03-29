@@ -70,7 +70,9 @@ function GameRow({
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
-  const isSettled = isLocked;
+  // FIX: Permanently lock the row if it's a BYE.
+  const isBye = game.result === "BYE" || game.blackName === "BYE";
+  const isSettled = isLocked || isBye;
 
   useEffect(() => {
     const h = (e: MouseEvent) => {
@@ -96,12 +98,11 @@ function GameRow({
       toast.error(err.message || "Failed to submit result."),
   });
 
-  const currentLabel =
-    selected === "BYE"
-      ? "Bye"
-      : selected
-        ? (RESULT_OPTIONS.find((o) => o.value === selected)?.label ?? selected)
-        : "Select result";
+  const currentLabel = isBye
+    ? "Bye"
+    : selected
+      ? (RESULT_OPTIONS.find((o) => o.value === selected)?.label ?? selected)
+      : "Select result";
 
   return (
     <div
@@ -159,7 +160,11 @@ function GameRow({
         </span>
         <Swords
           size={13}
-          style={{ color: "var(--border-strong)", margin: "0 0.5rem" }}
+          style={{
+            color: "var(--border-strong)",
+            margin: "0 0.5rem",
+            flexShrink: 0,
+          }}
         />
         <span
           style={{
@@ -173,7 +178,7 @@ function GameRow({
         >
           B
         </span>
-        {game.blackName === "BYE" ? (
+        {isBye ? (
           <em style={{ color: "var(--text-muted)", flex: 1 }}>BYE</em>
         ) : (
           <Link
@@ -250,7 +255,7 @@ function GameRow({
           )}
         </button>
 
-        {open && (
+        {open && !isSettled && (
           <div
             style={{
               position: "absolute",
@@ -406,7 +411,6 @@ function CheckInTab({ tournamentId }: { tournamentId: string }) {
   );
 }
 
-// Added Pagination state specifically for requests
 function RequestsManager({ tournamentId }: { tournamentId: string }) {
   const queryClient = useQueryClient();
   const [reqPage, setReqPage] = useState(0);
@@ -420,8 +424,14 @@ function RequestsManager({ tournamentId }: { tournamentId: string }) {
 
   useEffect(() => {
     if (requestsPage) {
-      if (reqPage === 0) setReqList(requestsPage.content);
-      else setReqList((prev) => [...prev, ...requestsPage.content]);
+      setReqList((prev) => {
+        if (reqPage === 0) return requestsPage.content;
+        const existingIds = new Set(prev.map((r) => r.requestId));
+        const newReqs = requestsPage.content.filter(
+          (r) => !existingIds.has(r.requestId),
+        );
+        return [...prev, ...newReqs];
+      });
     }
   }, [requestsPage, reqPage]);
 
@@ -514,7 +524,6 @@ function RequestsManager({ tournamentId }: { tournamentId: string }) {
           </div>
         </div>
       ))}
-
       {requestsPage && !requestsPage.last && (
         <button
           onClick={() => setReqPage((p) => p + 1)}

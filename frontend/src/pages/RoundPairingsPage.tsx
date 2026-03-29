@@ -1,20 +1,19 @@
 // --- START OF FILE src/pages/RoundPairingsPage.tsx ---
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
-import { useQuery, useQueries } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import {
   ArrowLeft,
   ChevronLeft,
   ChevronRight,
-  Swords,
   ArrowRight,
   Loader2,
+  Swords,
 } from "lucide-react";
 import { getRoundPairings } from "../api/matchmaking";
 import { getTournament } from "../api/tournaments";
 import type { GamePairingDTO } from "../types";
 
-// --- Read-Only Helper Functions ---
 type Side = "white" | "black";
 function getResultScore(result: string, side: Side): string {
   if (result === "PENDING") return "·";
@@ -110,109 +109,96 @@ function RoundStatusBadge({ status }: { status?: string }) {
   );
 }
 
-// --- Read-Only Card Component ---
-function PairingCard({ game, index }: { game: GamePairingDTO; index: number }) {
+function PairingRow({ game }: { game: GamePairingDTO }) {
   const isBye = game.result === "BYE";
-  const isPending = game.result === "PENDING";
-  const isDone = !isPending;
+  const isSettled = game.result !== "PENDING";
+
   return (
-    <div
-      style={{
-        background: isDone ? "rgba(187,148,87,0.025)" : "var(--bg-surface)",
-        border: `1px solid ${isDone ? "var(--border)" : "var(--border-subtle)"}`,
-        borderRadius: "10px",
-        overflow: "hidden",
-        opacity: 0,
-        animation: "rp-cardIn 280ms ease forwards",
-        animationDelay: `${index * 22}ms`,
-      }}
-    >
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          padding: "0.375rem 0.875rem",
-          background: "var(--bg-elevated)",
-          borderBottom: "1px solid var(--border-subtle)",
-        }}
-      >
+    <div className={`rp-game-row ${isSettled ? "settled" : ""}`}>
+      <div className="rp-game-players">
         <span
           style={{
-            fontSize: "0.6875rem",
-            fontWeight: 700,
+            fontSize: "0.75rem",
+            fontWeight: 600,
             color: "var(--text-muted)",
-            textTransform: "uppercase",
+            textAlign: "center",
+            background: "var(--bg-elevated)",
+            border: "1px solid var(--border)",
+            borderRadius: "5px",
+            padding: "0.15rem 0.35rem",
+            marginRight: "0.5rem",
           }}
         >
-          Board {game.boardNumber}
+          {game.boardNumber}
         </span>
-        {isPending ? (
-          <span
-            style={{
-              fontSize: "0.6875rem",
-              color: "var(--text-muted)",
-              fontStyle: "italic",
-            }}
-          >
-            Pending
-          </span>
-        ) : (
-          <span
-            style={{
-              fontSize: "0.6875rem",
-              fontWeight: 600,
-              color: "var(--camel-400)",
-              textTransform: "uppercase",
-            }}
-          >
-            {game.result === "DRAW"
-              ? "Draw"
-              : game.result === "BYE"
-                ? "Bye"
-                : game.result === "WHITE_WINS"
-                  ? "White wins"
-                  : "Black wins"}
-          </span>
-        )}
-      </div>
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          padding: "0.75rem 0.875rem",
-          gap: "0.625rem",
-        }}
-      >
-        <div
+
+        <Link
+          to={`/users/${game.whiteId || game.whiteName}`}
           style={{
+            fontSize: "0.875rem",
+            color: "var(--text-secondary)",
+            fontWeight: game.result === "WHITE_WINS" ? 600 : 400,
             flex: 1,
-            minWidth: 0,
-            display: "flex",
-            flexDirection: "column",
-            gap: "0.125rem",
+            textAlign: "right",
+            textDecoration: "none",
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+          }}
+          onMouseEnter={(e) =>
+            (e.currentTarget.style.color = "var(--accent-cta)")
+          }
+          onMouseLeave={(e) =>
+            (e.currentTarget.style.color = "var(--text-secondary)")
+          }
+        >
+          {game.whiteName}
+        </Link>
+
+        <span
+          style={{
+            fontSize: "0.75rem",
+            color: "var(--text-muted)",
+            padding: "0.1rem 0.375rem",
+            background: "var(--bg-elevated)",
+            borderRadius: "4px",
+            marginLeft: "0.5rem",
           }}
         >
-          <span
-            style={{
-              fontSize: "0.6875rem",
-              fontWeight: 600,
-              color: "var(--text-muted)",
-              textTransform: "uppercase",
-            }}
-          >
-            White
-          </span>
+          W
+        </span>
+        <Swords
+          size={13}
+          style={{
+            color: "var(--border-strong)",
+            margin: "0 0.5rem",
+            flexShrink: 0,
+          }}
+        />
+        <span
+          style={{
+            fontSize: "0.75rem",
+            color: "var(--text-muted)",
+            padding: "0.1rem 0.375rem",
+            background: "var(--bg-elevated)",
+            borderRadius: "4px",
+            marginRight: "0.5rem",
+          }}
+        >
+          B
+        </span>
+
+        {isBye ? (
+          <em style={{ color: "var(--text-muted)", flex: 1 }}>BYE</em>
+        ) : (
           <Link
-            to={`/users/${game.whiteId || game.whiteName}`}
+            to={`/users/${game.blackId || game.blackName}`}
             style={{
+              fontSize: "0.875rem",
+              color: "var(--text-secondary)",
+              fontWeight: game.result === "BLACK_WINS" ? 600 : 400,
+              flex: 1,
               textDecoration: "none",
-              fontSize: "0.9rem",
-              fontWeight: game.result === "WHITE_WINS" ? 600 : 400,
-              color:
-                game.result === "WHITE_WINS"
-                  ? "var(--text-primary)"
-                  : "var(--text-secondary)",
               whiteSpace: "nowrap",
               overflow: "hidden",
               textOverflow: "ellipsis",
@@ -221,98 +207,31 @@ function PairingCard({ game, index }: { game: GamePairingDTO; index: number }) {
               (e.currentTarget.style.color = "var(--accent-cta)")
             }
             onMouseLeave={(e) =>
-              (e.currentTarget.style.color =
-                game.result === "WHITE_WINS"
-                  ? "var(--text-primary)"
-                  : "var(--text-secondary)")
+              (e.currentTarget.style.color = "var(--text-secondary)")
             }
           >
-            {game.whiteName}
+            {game.blackName}
           </Link>
-        </div>
-        <div
+        )}
+      </div>
+
+      <div className="rp-game-result">
+        <ScorePill result={game.result} side="white" />
+        <span
           style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "0.375rem",
-            flexShrink: 0,
+            fontSize: "0.6875rem",
+            color: "var(--border-strong)",
+            fontWeight: 600,
+            margin: "0 0.5rem",
           }}
         >
-          <ScorePill result={game.result} side="white" />
-          <span
-            style={{
-              fontSize: "0.6875rem",
-              color: "var(--border-strong)",
-              fontWeight: 600,
-            }}
-          >
-            vs
-          </span>
-          {isBye ? (
-            <span style={{ minWidth: "32px", height: "32px" }} />
-          ) : (
-            <ScorePill result={game.result} side="black" />
-          )}
-        </div>
-        <div
-          style={{
-            flex: 1,
-            minWidth: 0,
-            display: "flex",
-            flexDirection: "column",
-            gap: "0.125rem",
-            alignItems: "flex-end",
-          }}
-        >
-          <span
-            style={{
-              fontSize: "0.6875rem",
-              fontWeight: 600,
-              color: "var(--text-muted)",
-              textTransform: "uppercase",
-            }}
-          >
-            Black
-          </span>
-          {isBye ? (
-            <span
-              style={{
-                fontSize: "0.875rem",
-                color: "var(--text-muted)",
-                fontStyle: "italic",
-              }}
-            >
-              BYE
-            </span>
-          ) : (
-            <Link
-              to={`/users/${game.blackId || game.blackName}`}
-              style={{
-                textDecoration: "none",
-                fontSize: "0.9rem",
-                fontWeight: game.result === "BLACK_WINS" ? 600 : 400,
-                color:
-                  game.result === "BLACK_WINS"
-                    ? "var(--text-primary)"
-                    : "var(--text-secondary)",
-                whiteSpace: "nowrap",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-              }}
-              onMouseEnter={(e) =>
-                (e.currentTarget.style.color = "var(--accent-cta)")
-              }
-              onMouseLeave={(e) =>
-                (e.currentTarget.style.color =
-                  game.result === "BLACK_WINS"
-                    ? "var(--text-primary)"
-                    : "var(--text-secondary)")
-              }
-            >
-              {game.blackName}
-            </Link>
-          )}
-        </div>
+          vs
+        </span>
+        {isBye ? (
+          <span style={{ minWidth: "32px" }} />
+        ) : (
+          <ScorePill result={game.result} side="black" />
+        )}
       </div>
     </div>
   );
@@ -320,43 +239,35 @@ function PairingCard({ game, index }: { game: GamePairingDTO; index: number }) {
 
 export default function RoundPairingsPage() {
   const { tournamentId } = useParams<{ tournamentId: string }>();
-  const [currentRound, setCurrentRound] = useState<number | null>(null);
+  const [selectedRound, setSelectedRound] = useState<number | null>(null);
 
-  const { data: tournament } = useQuery({
+  const { data: tournament, isLoading: tLoading } = useQuery({
     queryKey: ["tournament", tournamentId],
     queryFn: () => getTournament(tournamentId!),
     enabled: !!tournamentId,
   });
 
-  // Fetch ALL rounds concurrently to determine highest public round
-  const roundQueries = useQueries({
-    queries: Array.from({ length: tournament?.numberOfRounds || 0 }).map(
-      (_, i) => ({
-        queryKey: ["pairings", tournamentId, i + 1],
-        queryFn: () => getRoundPairings(tournamentId!, i + 1),
-        enabled: !!tournament,
-        retry: 0,
-        refetchInterval: tournament?.status === "ONGOING" ? 30_000 : false,
-      }),
-    ),
-  });
+  const latestRound = tournament?.currentRound || 0;
 
-  const generatedRounds = roundQueries
-    .map((q, i) => ({ round: i + 1, hasData: !!q.data?.pairings?.length }))
-    .filter((r) => r.hasData)
-    .map((r) => r.round);
-  const latestGeneratedRound =
-    generatedRounds.length > 0 ? Math.max(...generatedRounds) : 0;
-
+  // Initialize default view to the latest generated round
   useEffect(() => {
-    if (currentRound === null && roundQueries.every((q) => !q.isLoading)) {
-      setCurrentRound(latestGeneratedRound > 0 ? latestGeneratedRound : 1);
+    if (tournament && selectedRound === null) {
+      setSelectedRound(Math.max(1, latestRound));
     }
-  }, [roundQueries, currentRound, latestGeneratedRound]);
+  }, [tournament, selectedRound, latestRound]);
 
-  const round = currentRound ?? 1;
-  const pairings = roundQueries[round - 1]?.data;
-  const isLoading = roundQueries[round - 1]?.isLoading;
+  const round = selectedRound ?? 1;
+
+  // ONLY fetch pairings if the round has actually been generated
+  const { data: pairings, isLoading: pLoading } = useQuery({
+    queryKey: ["pairings", tournamentId, round],
+    queryFn: () => getRoundPairings(tournamentId!, round),
+    enabled: !!tournamentId && round <= latestRound && latestRound > 0,
+    refetchInterval:
+      tournament?.status === "ONGOING" && round === latestRound
+        ? 30_000
+        : false,
+  });
 
   const pending =
     pairings?.pairings.filter((g) => g.result === "PENDING").length ?? 0;
@@ -364,13 +275,15 @@ export default function RoundPairingsPage() {
   const sorted = [...(pairings?.pairings ?? [])].sort(
     (a, b) => a.boardNumber - b.boardNumber,
   );
-  const hasPairings = pairings && pairings.pairings.length > 0;
 
-  // Public users can ONLY navigate up to the latest generated round
-  const canGoNext = round < latestGeneratedRound;
+  const canGoNext = round < latestRound;
   const canGoPrev = round > 1;
 
-  if (currentRound === null)
+  const isLoading =
+    tLoading || selectedRound === null || (pLoading && round <= latestRound);
+  const isNotGenerated = round > latestRound;
+
+  if (tLoading || selectedRound === null)
     return (
       <div style={{ textAlign: "center", padding: "5rem" }}>
         <Loader2
@@ -385,12 +298,23 @@ export default function RoundPairingsPage() {
     <>
       <style>{`
         @keyframes rp-fadeIn  { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
-        @keyframes rp-cardIn  { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
-        .rp-page { max-width: 780px; margin: 0 auto; padding: 2.5rem 1.5rem 5rem; animation: rp-fadeIn 300ms ease forwards; }
+        .rp-page { max-width: 1000px; margin: 0 auto; padding: 2.5rem 1.5rem 5rem; animation: rp-fadeIn 300ms ease forwards; }
         .rp-nav-btn { display: flex; align-items: center; gap: 0.375rem; padding: 0.5rem 0.875rem; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-surface); color: var(--text-secondary); font-size: 0.875rem; font-weight: 500; cursor: pointer; transition: 150ms; }
         .rp-nav-btn:hover:not(:disabled) { border-color: var(--border-strong); color: var(--text-primary); }
         .rp-nav-btn:disabled { opacity: 0.3; cursor: not-allowed; }
-        @media (max-width: 480px) { .rp-page { padding: 1.25rem 0.875rem 4rem; } .rp-nav-btn span.nav-label { display: none; } }
+
+        .rp-game-row { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 0.75rem 1rem; border-bottom: 1px solid var(--border-subtle); background: var(--bg-surface); }
+        .rp-game-row:last-child { border-bottom: none; border-bottom-left-radius: 13px; border-bottom-right-radius: 13px; }
+        .rp-game-row.settled { background: rgba(187,148,87,0.03); }
+        .rp-game-players { display: flex; align-items: center; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; }
+        .rp-game-result { display: flex; align-items: center; flex-shrink: 0; }
+
+        @media (max-width: 640px) { 
+          .rp-page { padding: 1.25rem 0.875rem 4rem; } 
+          .rp-nav-btn span.nav-label { display: none; } 
+          .rp-game-row { flex-direction: column; align-items: stretch; gap: 0.75rem; } 
+          .rp-game-result { justify-content: center; background: var(--bg-elevated); padding: 0.5rem; border-radius: 8px; }
+        }
       `}</style>
 
       <div className="rp-page">
@@ -440,7 +364,7 @@ export default function RoundPairingsPage() {
               }}
             >
               {tournament.tournamentName}
-              {hasPairings && (
+              {!isNotGenerated && (
                 <span>
                   {" "}
                   · {done} done
@@ -467,7 +391,7 @@ export default function RoundPairingsPage() {
           <button
             className="rp-nav-btn"
             disabled={!canGoPrev}
-            onClick={() => setCurrentRound((r) => r! - 1)}
+            onClick={() => setSelectedRound((r) => r! - 1)}
           >
             <ChevronLeft size={15} />
             <span className="nav-label">Prev</span>
@@ -486,7 +410,7 @@ export default function RoundPairingsPage() {
           <button
             className="rp-nav-btn"
             disabled={!canGoNext}
-            onClick={() => setCurrentRound((r) => r! + 1)}
+            onClick={() => setSelectedRound((r) => r! + 1)}
           >
             <span className="nav-label">Next</span>
             <ChevronRight size={15} />
@@ -504,7 +428,7 @@ export default function RoundPairingsPage() {
                 style={{ margin: "0 auto" }}
               />
             </div>
-          ) : !hasPairings ? (
+          ) : isNotGenerated ? (
             <div
               style={{
                 textAlign: "center",
@@ -529,13 +453,46 @@ export default function RoundPairingsPage() {
               </p>
             </div>
           ) : (
-            sorted.map((game, i) => (
-              <PairingCard key={game.gameId} game={game} index={i} />
-            ))
+            <>
+              {/* Header row for stats */}
+              <div
+                style={{
+                  padding: "1rem",
+                  background: "var(--bg-elevated)",
+                  borderBottom: "1px solid var(--border)",
+                  borderTopLeftRadius: "13px",
+                  borderTopRightRadius: "13px",
+                  display: "flex",
+                  gap: "1.5rem",
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: "0.8125rem",
+                    color: "var(--warning)",
+                    fontWeight: 600,
+                  }}
+                >
+                  {pending} Pending
+                </span>
+                <span
+                  style={{
+                    fontSize: "0.8125rem",
+                    color: "var(--success)",
+                    fontWeight: 600,
+                  }}
+                >
+                  {done} Settled
+                </span>
+              </div>
+              {sorted.map((game) => (
+                <PairingRow key={game.gameId} game={game} />
+              ))}
+            </>
           )}
         </div>
 
-        {!isLoading && pairings && (
+        {!isLoading && !isNotGenerated && (
           <div
             style={{
               display: "flex",

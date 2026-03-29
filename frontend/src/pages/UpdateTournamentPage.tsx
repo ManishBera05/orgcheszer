@@ -132,370 +132,361 @@ export default function UpdateTournamentPage() {
     );
 
   return (
-    <div
-      style={{
-        maxWidth: "700px",
-        margin: "0 auto",
-        padding: "2.5rem 1.5rem 5rem",
-      }}
-    >
-      <button
-        onClick={() => navigate(-1)}
-        style={{
-          display: "inline-flex",
-          alignItems: "center",
-          gap: "0.375rem",
-          background: "none",
-          border: "none",
-          color: "var(--text-muted)",
-          fontSize: "0.875rem",
-          cursor: "pointer",
-          padding: "0 0 1.5rem",
-        }}
-      >
-        <ArrowLeft size={15} /> Back
-      </button>
-
-      <div style={{ marginBottom: "2rem" }}>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "0.625rem",
-            marginBottom: "0.375rem",
-          }}
-        >
-          <Trophy size={20} style={{ color: "var(--accent-cta)" }} />
-          <h1
-            style={{
-              fontSize: "1.75rem",
-              fontWeight: 700,
-              color: "var(--text-primary)",
-              margin: 0,
-            }}
-          >
-            Update Tournament
-          </h1>
-        </div>
-      </div>
-
-      <form
-        onSubmit={handleSubmit}
-        style={{
-          background: "var(--bg-surface)",
-          border: "1px solid var(--border)",
-          borderRadius: "16px",
-          padding: "2rem",
-          display: "flex",
-          flexDirection: "column",
-          gap: "1.5rem",
-          marginBottom: "2rem",
-        }}
-      >
-        <div>
-          <label
-            style={{
-              display: "block",
-              marginBottom: "0.5rem",
-              fontSize: "0.875rem",
-              color: "var(--text-secondary)",
-              fontWeight: 500,
-            }}
-          >
-            Tournament Name
-          </label>
-          <input
-            type="text"
-            name="tournamentName"
-            value={formData.tournamentName}
-            onChange={handleChange}
-            style={inputStyle}
-            required
-          />
-        </div>
-
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr",
-            gap: "1rem",
-          }}
-        >
-          <div>
-            <label
-              style={{
-                display: "block",
-                marginBottom: "0.5rem",
-                fontSize: "0.875rem",
-                color: "var(--text-secondary)",
-                fontWeight: 500,
-              }}
-            >
-              Start Date & Time
-            </label>
-            <input
-              type="datetime-local"
-              name="startDateTime"
-              value={formData.startDateTime}
-              onChange={handleChange}
-              style={inputStyle}
-              required
-            />
-          </div>
-          <div>
-            <label
-              style={{
-                display: "block",
-                marginBottom: "0.5rem",
-                fontSize: "0.875rem",
-                color: "var(--text-secondary)",
-                fontWeight: 500,
-              }}
-            >
-              Location
-            </label>
-            <input
-              type="text"
-              name="location"
-              value={formData.location}
-              onChange={handleChange}
-              style={inputStyle}
-              required
-            />
-          </div>
-        </div>
-
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr",
-            gap: "1rem",
-          }}
-        >
-          <div>
-            <label
-              style={{
-                display: "block",
-                marginBottom: "0.5rem",
-                fontSize: "0.875rem",
-                color: "var(--text-secondary)",
-                fontWeight: 500,
-              }}
-            >
-              Format
-            </label>
-            <select
-              name="format"
-              value={formData.format}
-              onChange={handleChange}
-              style={inputStyle}
-            >
-              <option value="SWISS">Swiss System</option>
-              <option value="ROUND_ROBIN">Round Robin</option>
-            </select>
-          </div>
-          <div>
-            <label
-              style={{
-                display: "block",
-                marginBottom: "0.5rem",
-                fontSize: "0.875rem",
-                color: "var(--text-secondary)",
-                fontWeight: 500,
-              }}
-            >
-              Time Control
-            </label>
-            <input
-              type="text"
-              name="timeControl"
-              value={formData.timeControl}
-              onChange={handleChange}
-              style={inputStyle}
-              required
-            />
-          </div>
-        </div>
-
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr 1fr",
-            gap: "1rem",
-          }}
-        >
-          <div>
-            <label
-              style={{
-                display: "block",
-                marginBottom: "0.5rem",
-                fontSize: "0.875rem",
-                color: "var(--text-secondary)",
-                fontWeight: 500,
-              }}
-            >
-              Rounds
-            </label>
-            <input
-              type="number"
-              name="numberOfRounds"
-              value={formData.numberOfRounds}
-              onChange={handleChange}
-              min="1"
-              max="20"
-              style={inputStyle}
-              required
-            />
-          </div>
-          <div>
-            <label
-              style={{
-                display: "block",
-                marginBottom: "0.5rem",
-                fontSize: "0.875rem",
-                color: "var(--text-secondary)",
-                fontWeight: 500,
-              }}
-            >
-              Max Players
-            </label>
-            <input
-              type="number"
-              name="maxParticipants"
-              value={formData.maxParticipants}
-              onChange={handleChange}
-              min="4"
-              style={inputStyle}
-              required
-            />
-          </div>
-          <div>
-            <label
-              style={{
-                display: "block",
-                marginBottom: "0.5rem",
-                fontSize: "0.875rem",
-                color: "var(--text-secondary)",
-                fontWeight: 500,
-              }}
-            >
-              Entry Fee (₹)
-            </label>
-            <input
-              type="number"
-              name="entryFee"
-              value={formData.entryFee}
-              onChange={handleChange}
-              min="0"
-              style={inputStyle}
-              required
-            />
-          </div>
-        </div>
-
-        <div>
-          <label
-            style={{
-              display: "block",
-              marginBottom: "0.5rem",
-              fontSize: "0.875rem",
-              color: "var(--text-secondary)",
-              fontWeight: 500,
-            }}
-          >
-            Description
-          </label>
-          <textarea
-            name="description"
-            value={formData.description}
-            onChange={handleChange}
-            style={{ ...inputStyle, minHeight: "100px", resize: "vertical" }}
-            required
-          />
-        </div>
-
-        <button
-          type="submit"
-          disabled={updateMut.isPending}
-          style={{
-            padding: "0.875rem",
-            background: "var(--accent-cta)",
-            color: "var(--text-on-accent)",
-            border: "none",
-            borderRadius: "8px",
-            fontWeight: 600,
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: "0.5rem",
-          }}
-        >
-          {updateMut.isPending ? (
-            <Loader2 size={18} className="animate-spin" />
-          ) : (
-            <Save size={18} />
-          )}{" "}
-          Save Changes
-        </button>
-      </form>
-
-      {/* DANGER ZONE */}
+    <>
+      <style>{`
+        .ut-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+        .ut-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; }
+        @media (max-width: 640px) {
+          .ut-grid-2, .ut-grid-3 { grid-template-columns: 1fr; }
+        }
+      `}</style>
       <div
         style={{
-          border: "1px solid rgba(211,77,75,0.4)",
-          borderRadius: "16px",
-          padding: "1.5rem",
-          background: "rgba(211,77,75,0.05)",
+          maxWidth: "700px",
+          margin: "0 auto",
+          padding: "2.5rem 1.5rem 5rem",
         }}
       >
-        <h3
+        <button
+          onClick={() => navigate(-1)}
           style={{
-            color: "var(--danger)",
-            margin: "0 0 0.5rem",
-            fontSize: "1.125rem",
-            display: "flex",
+            display: "inline-flex",
             alignItems: "center",
-            gap: "0.5rem",
-          }}
-        >
-          <XCircle size={18} /> Danger Zone
-        </h3>
-        <p
-          style={{
+            gap: "0.375rem",
+            background: "none",
+            border: "none",
             color: "var(--text-muted)",
             fontSize: "0.875rem",
-            marginBottom: "1rem",
-          }}
-        >
-          Cancelling a tournament is permanent and will notify all registered
-          players.
-        </p>
-        <button
-          onClick={handleCancelTournament}
-          disabled={cancelMut.isPending}
-          style={{
-            padding: "0.75rem 1rem",
-            background: "var(--danger)",
-            color: "white",
-            border: "none",
-            borderRadius: "8px",
-            fontWeight: 600,
             cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            gap: "0.5rem",
+            padding: "0 0 1.5rem",
           }}
         >
-          {cancelMut.isPending ? (
-            <Loader2 size={16} className="animate-spin" />
-          ) : (
-            <XCircle size={16} />
-          )}{" "}
-          Cancel Tournament
+          <ArrowLeft size={15} /> Back
         </button>
+
+        <div style={{ marginBottom: "2rem" }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "0.625rem",
+              marginBottom: "0.375rem",
+            }}
+          >
+            <Trophy size={20} style={{ color: "var(--accent-cta)" }} />
+            <h1
+              style={{
+                fontSize: "1.75rem",
+                fontWeight: 700,
+                color: "var(--text-primary)",
+                margin: 0,
+              }}
+            >
+              Update Tournament
+            </h1>
+          </div>
+        </div>
+
+        <form
+          onSubmit={handleSubmit}
+          style={{
+            background: "var(--bg-surface)",
+            border: "1px solid var(--border)",
+            borderRadius: "16px",
+            padding: "clamp(1.5rem, 4vw, 2rem)",
+            display: "flex",
+            flexDirection: "column",
+            gap: "1.5rem",
+            marginBottom: "2rem",
+          }}
+        >
+          <div>
+            <label
+              style={{
+                display: "block",
+                marginBottom: "0.5rem",
+                fontSize: "0.875rem",
+                color: "var(--text-secondary)",
+                fontWeight: 500,
+              }}
+            >
+              Tournament Name
+            </label>
+            <input
+              type="text"
+              name="tournamentName"
+              value={formData.tournamentName}
+              onChange={handleChange}
+              style={inputStyle}
+              required
+            />
+          </div>
+
+          <div className="ut-grid-2">
+            <div>
+              <label
+                style={{
+                  display: "block",
+                  marginBottom: "0.5rem",
+                  fontSize: "0.875rem",
+                  color: "var(--text-secondary)",
+                  fontWeight: 500,
+                }}
+              >
+                Start Date & Time
+              </label>
+              <input
+                type="datetime-local"
+                name="startDateTime"
+                value={formData.startDateTime}
+                onChange={handleChange}
+                style={inputStyle}
+                required
+              />
+            </div>
+            <div>
+              <label
+                style={{
+                  display: "block",
+                  marginBottom: "0.5rem",
+                  fontSize: "0.875rem",
+                  color: "var(--text-secondary)",
+                  fontWeight: 500,
+                }}
+              >
+                Location
+              </label>
+              <input
+                type="text"
+                name="location"
+                value={formData.location}
+                onChange={handleChange}
+                style={inputStyle}
+                required
+              />
+            </div>
+          </div>
+
+          <div className="ut-grid-2">
+            <div>
+              <label
+                style={{
+                  display: "block",
+                  marginBottom: "0.5rem",
+                  fontSize: "0.875rem",
+                  color: "var(--text-secondary)",
+                  fontWeight: 500,
+                }}
+              >
+                Format
+              </label>
+              <select
+                name="format"
+                value={formData.format}
+                onChange={handleChange}
+                style={inputStyle}
+              >
+                <option value="SWISS">Swiss System</option>
+                <option value="ROUND_ROBIN">Round Robin</option>
+              </select>
+            </div>
+            <div>
+              <label
+                style={{
+                  display: "block",
+                  marginBottom: "0.5rem",
+                  fontSize: "0.875rem",
+                  color: "var(--text-secondary)",
+                  fontWeight: 500,
+                }}
+              >
+                Time Control
+              </label>
+              <input
+                type="text"
+                name="timeControl"
+                value={formData.timeControl}
+                onChange={handleChange}
+                style={inputStyle}
+                required
+              />
+            </div>
+          </div>
+
+          <div className="ut-grid-3">
+            <div>
+              <label
+                style={{
+                  display: "block",
+                  marginBottom: "0.5rem",
+                  fontSize: "0.875rem",
+                  color: "var(--text-secondary)",
+                  fontWeight: 500,
+                }}
+              >
+                Rounds
+              </label>
+              <input
+                type="number"
+                name="numberOfRounds"
+                value={formData.numberOfRounds}
+                onChange={handleChange}
+                min="1"
+                max="20"
+                style={inputStyle}
+                required
+              />
+            </div>
+            <div>
+              <label
+                style={{
+                  display: "block",
+                  marginBottom: "0.5rem",
+                  fontSize: "0.875rem",
+                  color: "var(--text-secondary)",
+                  fontWeight: 500,
+                }}
+              >
+                Max Players
+              </label>
+              <input
+                type="number"
+                name="maxParticipants"
+                value={formData.maxParticipants}
+                onChange={handleChange}
+                min="4"
+                style={inputStyle}
+                required
+              />
+            </div>
+            <div>
+              <label
+                style={{
+                  display: "block",
+                  marginBottom: "0.5rem",
+                  fontSize: "0.875rem",
+                  color: "var(--text-secondary)",
+                  fontWeight: 500,
+                }}
+              >
+                Entry Fee (₹)
+              </label>
+              <input
+                type="number"
+                name="entryFee"
+                value={formData.entryFee}
+                onChange={handleChange}
+                min="0"
+                style={inputStyle}
+                required
+              />
+            </div>
+          </div>
+
+          <div>
+            <label
+              style={{
+                display: "block",
+                marginBottom: "0.5rem",
+                fontSize: "0.875rem",
+                color: "var(--text-secondary)",
+                fontWeight: 500,
+              }}
+            >
+              Description
+            </label>
+            <textarea
+              name="description"
+              value={formData.description}
+              onChange={handleChange}
+              style={{ ...inputStyle, minHeight: "100px", resize: "vertical" }}
+              required
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={updateMut.isPending}
+            style={{
+              padding: "0.875rem",
+              background: "var(--accent-cta)",
+              color: "var(--text-on-accent)",
+              border: "none",
+              borderRadius: "8px",
+              fontWeight: 600,
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "0.5rem",
+            }}
+          >
+            {updateMut.isPending ? (
+              <Loader2 size={18} className="animate-spin" />
+            ) : (
+              <Save size={18} />
+            )}{" "}
+            Save Changes
+          </button>
+        </form>
+
+        {/* DANGER ZONE */}
+        <div
+          style={{
+            border: "1px solid rgba(211,77,75,0.4)",
+            borderRadius: "16px",
+            padding: "1.5rem",
+            background: "rgba(211,77,75,0.05)",
+          }}
+        >
+          <h3
+            style={{
+              color: "var(--danger)",
+              margin: "0 0 0.5rem",
+              fontSize: "1.125rem",
+              display: "flex",
+              alignItems: "center",
+              gap: "0.5rem",
+            }}
+          >
+            <XCircle size={18} /> Danger Zone
+          </h3>
+          <p
+            style={{
+              color: "var(--text-muted)",
+              fontSize: "0.875rem",
+              marginBottom: "1rem",
+            }}
+          >
+            Cancelling a tournament is permanent and will notify all registered
+            players.
+          </p>
+          <button
+            onClick={handleCancelTournament}
+            disabled={cancelMut.isPending}
+            style={{
+              padding: "0.75rem 1rem",
+              background: "var(--danger)",
+              color: "white",
+              border: "none",
+              borderRadius: "8px",
+              fontWeight: 600,
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: "0.5rem",
+            }}
+          >
+            {cancelMut.isPending ? (
+              <Loader2 size={16} className="animate-spin" />
+            ) : (
+              <XCircle size={16} />
+            )}{" "}
+            Cancel Tournament
+          </button>
+        </div>
       </div>
-    </div>
+    </>
   );
 }
 // --- END OF FILE src/pages/UpdateTournamentPage.tsx ---

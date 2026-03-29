@@ -1,10 +1,10 @@
+// --- START OF FILE src/components/TournamentCard.tsx ---
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { MapPin, Clock, CalendarDays, Hash } from "lucide-react";
 import { formatDateTime, formatEntryFee, truncate } from "../lib/utils";
-import type { TournamentResponse } from "../types";
+import type { TournamentResponse, TournamentStatus } from "../types";
 
-/* ─── Countdown hook ──────────────────────────────────────── */
 function useCountdown(targetIso: string) {
   const calc = () => {
     const diff = new Date(targetIso).getTime() - Date.now();
@@ -26,10 +26,65 @@ function useCountdown(targetIso: string) {
   return r;
 }
 
-/* ─── Countdown badge ─────────────────────────────────────── */
-function CountdownBadge({ isoDate }: { isoDate: string }) {
-  const r = useCountdown(isoDate);
-  if (!r) {
+function StatusBadge({ t }: { t: TournamentResponse }) {
+  // If COMPLETED or CANCELLED, show solid badge without animation
+  if (t.status === "COMPLETED") {
+    return (
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "0.3rem",
+          padding: "0.25rem 0.6rem",
+          background: "rgba(156,121,64,0.15)",
+          border: "1px solid rgba(156,121,64,0.25)",
+          borderRadius: "6px",
+        }}
+      >
+        <span
+          style={{
+            fontSize: "0.6875rem",
+            fontWeight: 700,
+            color: "var(--camel-600)",
+            letterSpacing: "0.03em",
+          }}
+        >
+          Completed
+        </span>
+      </div>
+    );
+  }
+  if (t.status === "CANCELLED") {
+    return (
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "0.3rem",
+          padding: "0.25rem 0.6rem",
+          background: "rgba(211,77,75,0.15)",
+          border: "1px solid rgba(211,77,75,0.25)",
+          borderRadius: "6px",
+        }}
+      >
+        <span
+          style={{
+            fontSize: "0.6875rem",
+            fontWeight: 700,
+            color: "var(--danger)",
+            letterSpacing: "0.03em",
+          }}
+        >
+          Cancelled
+        </span>
+      </div>
+    );
+  }
+
+  const r = useCountdown(t.startDateTime);
+
+  // ONGOING or UPCOMING with diff <= 0 means LIVE
+  if (t.status === "ONGOING" || !r) {
     return (
       <div
         style={{
@@ -60,11 +115,13 @@ function CountdownBadge({ isoDate }: { isoDate: string }) {
             letterSpacing: "0.03em",
           }}
         >
-          Now
+          Live
         </span>
       </div>
     );
   }
+
+  // UPCOMING countdown
   const urgent = r.total < 86400;
   const units =
     r.d > 0
@@ -83,6 +140,7 @@ function CountdownBadge({ isoDate }: { isoDate: string }) {
             { v: r.m, l: "m" },
             { v: r.s, l: "s" },
           ];
+
   return (
     <div
       style={{
@@ -123,7 +181,6 @@ function CountdownBadge({ isoDate }: { isoDate: string }) {
   );
 }
 
-/* ─── Capacity bar ────────────────────────────────────────── */
 function CapacityBar({ current, max }: { current: number; max: number }) {
   const pct = max > 0 ? Math.min(100, (current / max) * 100) : 0;
   const color =
@@ -185,7 +242,6 @@ function CapacityBar({ current, max }: { current: number; max: number }) {
   );
 }
 
-/* ─── Meta cell ───────────────────────────────────────────── */
 function MetaCell({ icon, text }: { icon: React.ReactNode; text: string }) {
   return (
     <div
@@ -221,7 +277,6 @@ function MetaCell({ icon, text }: { icon: React.ReactNode; text: string }) {
   );
 }
 
-/* ─── TournamentCard ──────────────────────────────────────── */
 interface Props {
   t: TournamentResponse;
   index?: number;
@@ -264,7 +319,6 @@ export default function TournamentCard({ t, index = 0 }: Props) {
           el.style.transform = "translateY(0)";
         }}
       >
-        {/* Top accent bar */}
         <div
           style={{
             height: "3px",
@@ -283,7 +337,6 @@ export default function TournamentCard({ t, index = 0 }: Props) {
             flex: 1,
           }}
         >
-          {/* Row 1 — name + countdown in top-right */}
           <div
             style={{
               display: "flex",
@@ -318,12 +371,10 @@ export default function TournamentCard({ t, index = 0 }: Props) {
                 by {t.organizerName}
               </p>
             </div>
-            <CountdownBadge isoDate={t.startDateTime} />
+            {/* UPDATED STATUS BADGE */}
+            <StatusBadge t={t} />
           </div>
 
-          {/* 3 rows × 2 columns meta grid
-              Col 1: date+time | location | entry fee
-              Col 2: format    | time ctrl | rounds      */}
           <div
             style={{
               display: "grid",
@@ -349,7 +400,7 @@ export default function TournamentCard({ t, index = 0 }: Props) {
                   FMT
                 </span>
               }
-              text={t.format}
+              text={t.format.replace("_", " ")}
             />
             <MetaCell
               icon={<MapPin size={12} />}
@@ -377,7 +428,6 @@ export default function TournamentCard({ t, index = 0 }: Props) {
             />
           </div>
 
-          {/* Capacity bar */}
           <div
             style={{
               marginTop: "auto",
@@ -395,3 +445,4 @@ export default function TournamentCard({ t, index = 0 }: Props) {
     </>
   );
 }
+// --- END OF FILE src/components/TournamentCard.tsx ---

@@ -413,7 +413,7 @@ export default function HomePage() {
                 marginBottom: "1.25rem",
               }}
             >
-              Run tournaments
+              OrgCheszer:
               <br />
               <span
                 style={{
@@ -422,7 +422,7 @@ export default function HomePage() {
                   display: "inline-block",
                 }}
               >
-                like a grandmaster.
+                Organize. Pair. Play.
                 {/* Underline accent */}
                 <span
                   style={{

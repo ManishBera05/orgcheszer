@@ -433,10 +433,18 @@ public class TournamentService {
 
     private TournamentResponse mapToResponse(Tournament tournament) {
         TournamentResponse response = new TournamentResponse();
+        List<Rounds> rounds = roundsRepository
+                .findByTournamentTournamentIdOrderByRoundNumber(
+                        tournament.getTournamentId());
+
+        int currentRound = rounds.isEmpty()
+                ? 0
+                : rounds.getLast().getRoundNumber();
         response.setTournamentId(tournament.getTournamentId());
         response.setTournamentName(tournament.getTournamentName());
         response.setStartDateTime(tournament.getStartDateTime());
         response.setNumberOfRounds(tournament.getNumberOfRounds());
+        response.setCurrentRound(currentRound);
         response.setMaxParticipants(tournament.getMaxParticipants());
         response.setEntryFee(tournament.getEntryFee());
         response.setDescription(tournament.getDescription());
@@ -451,6 +459,7 @@ public class TournamentService {
                 tournament.getOrganizer().getFirstName() + " " +
                         tournament.getOrganizer().getLastName()
         );
+        response.setOrganizerId(tournament.getOrganizer().getId());
         response.setCurrentNumberOfParticipants(
                 tournament.getPlayers() != null ? tournament.getPlayers().size() : 0
         );

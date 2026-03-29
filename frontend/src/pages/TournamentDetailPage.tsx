@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { QRCodeSVG } from "qrcode.react";
 import { toast } from "sonner";
 import {
   CalendarDays,
@@ -19,6 +20,7 @@ import {
   CheckCircle2,
   AlertCircle,
   Swords,
+  QrCode,
 } from "lucide-react";
 import {
   getTournament,
@@ -26,6 +28,7 @@ import {
   registerForTournament,
 } from "../api/tournaments";
 import { getMyTournamentHistory } from "../api/users";
+import { getMyTicket } from "../api/matchmaking";
 import { useAuth } from "../hooks/useAuth";
 import {
   formatDateTime,
@@ -269,17 +272,24 @@ export default function TournamentDetailPage() {
     enabled: !!tournamentId,
   });
 
-  // Players Pagination Logic
   const { data: playersPageData, isFetching: isFetchingPlayers } = useQuery({
     queryKey: ["tournament-players", tournamentId, playerPage],
     queryFn: () => getTournamentPlayers(tournamentId!, playerPage, 50),
     enabled: !!tournamentId,
   });
 
+  // FIX: Filter out duplicates to avoid React 'key' errors during pagination
   useEffect(() => {
     if (playersPageData) {
-      if (playerPage === 0) setPlayersList(playersPageData.content);
-      else setPlayersList((prev) => [...prev, ...playersPageData.content]);
+      setPlayersList((prev) => {
+        if (playerPage === 0) return playersPageData.content;
+
+        const existingIds = new Set(prev.map((p) => p.userId));
+        const newPlayers = playersPageData.content.filter(
+          (p) => !existingIds.has(p.userId),
+        );
+        return [...prev, ...newPlayers];
+      });
     }
   }, [playersPageData, playerPage]);
 
@@ -291,6 +301,12 @@ export default function TournamentDetailPage() {
   const myRole = myHistory?.content.find(
     (t) => t.tournamentId === tournamentId,
   )?.role;
+
+  const { data: ticketToken } = useQuery({
+    queryKey: ["my-ticket", tournamentId],
+    queryFn: () => getMyTicket(tournamentId!),
+    enabled: myRole === "PLAYER" && !!tournamentId,
+  });
 
   const joinMutation = useMutation({
     mutationFn: () => registerForTournament(tournamentId!),
@@ -415,7 +431,7 @@ export default function TournamentDetailPage() {
                 <span
                   style={{ fontSize: "0.8125rem", color: "var(--text-muted)" }}
                 >
-                  {t.format}
+                  {t.format.replace("_", " ")}
                 </span>
               </div>
               <h1
@@ -436,9 +452,22 @@ export default function TournamentDetailPage() {
                 }}
               >
                 Organised by{" "}
-                <span style={{ color: "var(--camel-400)", fontWeight: 500 }}>
+                <Link
+                  to={`/users/${t.organizerId}`}
+                  style={{
+                    color: "var(--camel-400)",
+                    fontWeight: 500,
+                    textDecoration: "none",
+                  }}
+                  onMouseEnter={(e) =>
+                    (e.currentTarget.style.color = "var(--accent-cta)")
+                  }
+                  onMouseLeave={(e) =>
+                    (e.currentTarget.style.color = "var(--camel-400)")
+                  }
+                >
                   {t.organizerName}
-                </span>
+                </Link>
               </p>
             </div>
             <div style={{ flexShrink: 0, textAlign: "right" }}>
@@ -690,6 +719,53 @@ export default function TournamentDetailPage() {
           </div>
 
           <div className="td-right">
+            {myRole === "PLAYER" && ticketToken && (
+              <Section title="My Ticket" icon={<QrCode size={16} />}>
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    gap: "1rem",
+                  }}
+                >
+                  <div
+                    style={{
+                      background: "white",
+                      padding: "1rem",
+                      borderRadius: "12px",
+                    }}
+                  >
+                    <QRCodeSVG value={ticketToken} size={150} />
+                  </div>
+                  <code
+                    style={{
+                      background: "var(--bg-elevated)",
+                      border: "1px solid var(--border)",
+                      padding: "0.5rem 1rem",
+                      borderRadius: "8px",
+                      color: "var(--accent-cta)",
+                      fontSize: "1.25rem",
+                      fontWeight: 700,
+                      letterSpacing: "0.1em",
+                    }}
+                  >
+                    {ticketToken}
+                  </code>
+                  <p
+                    style={{
+                      fontSize: "0.8125rem",
+                      color: "var(--text-muted)",
+                      textAlign: "center",
+                      margin: 0,
+                    }}
+                  >
+                    Present this QR code to the tournament staff to check-in.
+                  </p>
+                </div>
+              </Section>
+            )}
+
             {t.status === "UPCOMING" && (
               <Section title="Registration" icon={<UserCircle size={16} />}>
                 <div

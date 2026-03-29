@@ -1,3 +1,4 @@
+// --- START OF FILE src/pages/CreateTournamentPage.tsx ---
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMutation } from "@tanstack/react-query";
@@ -82,109 +83,85 @@ export default function CreateTournamentPage() {
   };
 
   return (
-    <div
-      style={{
-        maxWidth: "700px",
-        margin: "0 auto",
-        padding: "2.5rem 1.5rem 5rem",
-      }}
-    >
-      <button
-        onClick={() => navigate(-1)}
+    <>
+      <style>{`
+        .ct-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+        .ct-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; }
+        @media (max-width: 640px) {
+          .ct-grid-2, .ct-grid-3 { grid-template-columns: 1fr; }
+        }
+      `}</style>
+      <div
         style={{
-          display: "inline-flex",
-          alignItems: "center",
-          gap: "0.375rem",
-          background: "none",
-          border: "none",
-          color: "var(--text-muted)",
-          fontSize: "0.875rem",
-          cursor: "pointer",
-          padding: "0 0 1.5rem",
-          fontFamily: "var(--font-sans)",
+          maxWidth: "700px",
+          margin: "0 auto",
+          padding: "2.5rem 1.5rem 5rem",
         }}
       >
-        <ArrowLeft size={15} /> Back
-      </button>
-
-      <div style={{ marginBottom: "2rem" }}>
-        <div
+        <button
+          onClick={() => navigate(-1)}
           style={{
-            display: "flex",
+            display: "inline-flex",
             alignItems: "center",
-            gap: "0.625rem",
-            marginBottom: "0.375rem",
+            gap: "0.375rem",
+            background: "none",
+            border: "none",
+            color: "var(--text-muted)",
+            fontSize: "0.875rem",
+            cursor: "pointer",
+            padding: "0 0 1.5rem",
+            fontFamily: "var(--font-sans)",
           }}
         >
-          <Trophy size={20} style={{ color: "var(--accent-cta)" }} />
-          <h1
+          <ArrowLeft size={15} /> Back
+        </button>
+
+        <div style={{ marginBottom: "2rem" }}>
+          <div
             style={{
-              fontSize: "1.75rem",
-              fontWeight: 700,
-              color: "var(--text-primary)",
+              display: "flex",
+              alignItems: "center",
+              gap: "0.625rem",
+              marginBottom: "0.375rem",
+            }}
+          >
+            <Trophy size={20} style={{ color: "var(--accent-cta)" }} />
+            <h1
+              style={{
+                fontSize: "1.75rem",
+                fontWeight: 700,
+                color: "var(--text-primary)",
+                margin: 0,
+              }}
+            >
+              Create Tournament
+            </h1>
+          </div>
+          <p
+            style={{
+              color: "var(--text-muted)",
+              fontSize: "0.9375rem",
               margin: 0,
             }}
           >
-            Create Tournament
-          </h1>
-        </div>
-        <p
-          style={{
-            color: "var(--text-muted)",
-            fontSize: "0.9375rem",
-            margin: 0,
-          }}
-        >
-          Fill in the details below. Once submitted, it will await admin
-          approval.
-        </p>
-      </div>
-
-      <form
-        onSubmit={handleSubmit}
-        style={{
-          background: "var(--bg-surface)",
-          border: "1px solid var(--border)",
-          borderRadius: "16px",
-          padding: "2rem",
-          display: "flex",
-          flexDirection: "column",
-          gap: "1.5rem",
-        }}
-      >
-        {/* Name */}
-        <div>
-          <label
-            style={{
-              display: "block",
-              marginBottom: "0.5rem",
-              fontSize: "0.875rem",
-              color: "var(--text-secondary)",
-              fontWeight: 500,
-            }}
-          >
-            Tournament Name{" "}
-            <span style={{ color: "var(--accent-cta)" }}>*</span>
-          </label>
-          <input
-            type="text"
-            name="tournamentName"
-            value={formData.tournamentName}
-            onChange={handleChange}
-            style={inputStyle}
-            placeholder="e.g., Winter Grandmaster Open"
-            required
-          />
+            Fill in the details below. Once submitted, it will await admin
+            approval.
+          </p>
         </div>
 
-        {/* Date & Location */}
-        <div
+        <form
+          onSubmit={handleSubmit}
           style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr",
-            gap: "1rem",
+            background: "var(--bg-surface)",
+            border: "1px solid var(--border)",
+            borderRadius: "16px",
+            padding: "clamp(1.5rem, 4vw, 2rem)",
+            display: "flex",
+            flexDirection: "column",
+            gap: "1.5rem",
           }}
         >
+          {/* Name */}
           <div>
             <label
               style={{
@@ -195,234 +172,251 @@ export default function CreateTournamentPage() {
                 fontWeight: 500,
               }}
             >
-              Start Date & Time{" "}
+              Tournament Name{" "}
               <span style={{ color: "var(--accent-cta)" }}>*</span>
             </label>
             <input
-              type="datetime-local"
-              name="startDateTime"
-              value={formData.startDateTime}
-              onChange={handleChange}
-              style={inputStyle}
-              required
-            />
-          </div>
-          <div>
-            <label
-              style={{
-                display: "block",
-                marginBottom: "0.5rem",
-                fontSize: "0.875rem",
-                color: "var(--text-secondary)",
-                fontWeight: 500,
-              }}
-            >
-              Location <span style={{ color: "var(--accent-cta)" }}>*</span>
-            </label>
-            <input
               type="text"
-              name="location"
-              value={formData.location}
+              name="tournamentName"
+              value={formData.tournamentName}
               onChange={handleChange}
               style={inputStyle}
-              placeholder="Address or Online link"
+              placeholder="e.g., Winter Grandmaster Open"
               required
             />
           </div>
-        </div>
 
-        {/* Format & Time Control */}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr",
-            gap: "1rem",
-          }}
-        >
-          <div>
-            <label
-              style={{
-                display: "block",
-                marginBottom: "0.5rem",
-                fontSize: "0.875rem",
-                color: "var(--text-secondary)",
-                fontWeight: 500,
-              }}
-            >
-              Format <span style={{ color: "var(--accent-cta)" }}>*</span>
-            </label>
-            <select
-              name="format"
-              value={formData.format}
-              onChange={handleChange}
-              style={inputStyle}
-            >
-              <option value="SWISS">Swiss System</option>
-              <option value="ROUND_ROBIN">Round Robin</option>
-            </select>
+          {/* Date & Location */}
+          <div className="ct-grid-2">
+            <div>
+              <label
+                style={{
+                  display: "block",
+                  marginBottom: "0.5rem",
+                  fontSize: "0.875rem",
+                  color: "var(--text-secondary)",
+                  fontWeight: 500,
+                }}
+              >
+                Start Date & Time{" "}
+                <span style={{ color: "var(--accent-cta)" }}>*</span>
+              </label>
+              <input
+                type="datetime-local"
+                name="startDateTime"
+                value={formData.startDateTime}
+                onChange={handleChange}
+                style={inputStyle}
+                required
+              />
+            </div>
+            <div>
+              <label
+                style={{
+                  display: "block",
+                  marginBottom: "0.5rem",
+                  fontSize: "0.875rem",
+                  color: "var(--text-secondary)",
+                  fontWeight: 500,
+                }}
+              >
+                Location <span style={{ color: "var(--accent-cta)" }}>*</span>
+              </label>
+              <input
+                type="text"
+                name="location"
+                value={formData.location}
+                onChange={handleChange}
+                style={inputStyle}
+                placeholder="Address or Online link"
+                required
+              />
+            </div>
           </div>
-          <div>
-            <label
-              style={{
-                display: "block",
-                marginBottom: "0.5rem",
-                fontSize: "0.875rem",
-                color: "var(--text-secondary)",
-                fontWeight: 500,
-              }}
-            >
-              Time Control <span style={{ color: "var(--accent-cta)" }}>*</span>
-            </label>
-            <input
-              type="text"
-              name="timeControl"
-              value={formData.timeControl}
-              onChange={handleChange}
-              style={inputStyle}
-              placeholder="e.g., 90+30"
-              required
-            />
-          </div>
-        </div>
 
-        {/* Numbers */}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr 1fr",
-            gap: "1rem",
-          }}
-        >
-          <div>
-            <label
-              style={{
-                display: "block",
-                marginBottom: "0.5rem",
-                fontSize: "0.875rem",
-                color: "var(--text-secondary)",
-                fontWeight: 500,
-              }}
-            >
-              Rounds (1-20)
-            </label>
-            <input
-              type="number"
-              name="numberOfRounds"
-              value={formData.numberOfRounds}
-              onChange={handleChange}
-              min="1"
-              max="20"
-              style={inputStyle}
-              required
-            />
+          {/* Format & Time Control */}
+          <div className="ct-grid-2">
+            <div>
+              <label
+                style={{
+                  display: "block",
+                  marginBottom: "0.5rem",
+                  fontSize: "0.875rem",
+                  color: "var(--text-secondary)",
+                  fontWeight: 500,
+                }}
+              >
+                Format <span style={{ color: "var(--accent-cta)" }}>*</span>
+              </label>
+              <select
+                name="format"
+                value={formData.format}
+                onChange={handleChange}
+                style={inputStyle}
+              >
+                <option value="SWISS">Swiss System</option>
+                <option value="ROUND_ROBIN">Round Robin</option>
+              </select>
+            </div>
+            <div>
+              <label
+                style={{
+                  display: "block",
+                  marginBottom: "0.5rem",
+                  fontSize: "0.875rem",
+                  color: "var(--text-secondary)",
+                  fontWeight: 500,
+                }}
+              >
+                Time Control{" "}
+                <span style={{ color: "var(--accent-cta)" }}>*</span>
+              </label>
+              <input
+                type="text"
+                name="timeControl"
+                value={formData.timeControl}
+                onChange={handleChange}
+                style={inputStyle}
+                placeholder="e.g., 90+30"
+                required
+              />
+            </div>
           </div>
-          <div>
-            <label
-              style={{
-                display: "block",
-                marginBottom: "0.5rem",
-                fontSize: "0.875rem",
-                color: "var(--text-secondary)",
-                fontWeight: 500,
-              }}
-            >
-              Max Players (≥4)
-            </label>
-            <input
-              type="number"
-              name="maxParticipants"
-              value={formData.maxParticipants}
-              onChange={handleChange}
-              min="4"
-              style={inputStyle}
-              required
-            />
-          </div>
-          <div>
-            <label
-              style={{
-                display: "block",
-                marginBottom: "0.5rem",
-                fontSize: "0.875rem",
-                color: "var(--text-secondary)",
-                fontWeight: 500,
-              }}
-            >
-              Entry Fee (₹)
-            </label>
-            <input
-              type="number"
-              name="entryFee"
-              value={formData.entryFee}
-              onChange={handleChange}
-              min="0"
-              style={inputStyle}
-              required
-            />
-          </div>
-        </div>
 
-        {/* Description */}
-        <div>
-          <label
+          {/* Numbers */}
+          <div className="ct-grid-3">
+            <div>
+              <label
+                style={{
+                  display: "block",
+                  marginBottom: "0.5rem",
+                  fontSize: "0.875rem",
+                  color: "var(--text-secondary)",
+                  fontWeight: 500,
+                }}
+              >
+                Rounds (1-20)
+              </label>
+              <input
+                type="number"
+                name="numberOfRounds"
+                value={formData.numberOfRounds}
+                onChange={handleChange}
+                min="1"
+                max="20"
+                style={inputStyle}
+                required
+              />
+            </div>
+            <div>
+              <label
+                style={{
+                  display: "block",
+                  marginBottom: "0.5rem",
+                  fontSize: "0.875rem",
+                  color: "var(--text-secondary)",
+                  fontWeight: 500,
+                }}
+              >
+                Max Players (≥4)
+              </label>
+              <input
+                type="number"
+                name="maxParticipants"
+                value={formData.maxParticipants}
+                onChange={handleChange}
+                min="4"
+                style={inputStyle}
+                required
+              />
+            </div>
+            <div>
+              <label
+                style={{
+                  display: "block",
+                  marginBottom: "0.5rem",
+                  fontSize: "0.875rem",
+                  color: "var(--text-secondary)",
+                  fontWeight: 500,
+                }}
+              >
+                Entry Fee (₹)
+              </label>
+              <input
+                type="number"
+                name="entryFee"
+                value={formData.entryFee}
+                onChange={handleChange}
+                min="0"
+                style={inputStyle}
+                required
+              />
+            </div>
+          </div>
+
+          {/* Description */}
+          <div>
+            <label
+              style={{
+                display: "block",
+                marginBottom: "0.5rem",
+                fontSize: "0.875rem",
+                color: "var(--text-secondary)",
+                fontWeight: 500,
+              }}
+            >
+              Description <span style={{ color: "var(--accent-cta)" }}>*</span>
+            </label>
+            <textarea
+              name="description"
+              value={formData.description}
+              onChange={handleChange}
+              style={{ ...inputStyle, minHeight: "100px", resize: "vertical" }}
+              placeholder="Provide tournament rules, prizes, and schedule details..."
+              required
+            />
+          </div>
+
+          {/* Actions */}
+          <div
             style={{
-              display: "block",
-              marginBottom: "0.5rem",
-              fontSize: "0.875rem",
-              color: "var(--text-secondary)",
-              fontWeight: 500,
-            }}
-          >
-            Description <span style={{ color: "var(--accent-cta)" }}>*</span>
-          </label>
-          <textarea
-            name="description"
-            value={formData.description}
-            onChange={handleChange}
-            style={{ ...inputStyle, minHeight: "100px", resize: "vertical" }}
-            placeholder="Provide tournament rules, prizes, and schedule details..."
-            required
-          />
-        </div>
-
-        {/* Actions */}
-        <div
-          style={{
-            display: "flex",
-            gap: "1rem",
-            marginTop: "1rem",
-            paddingTop: "1.5rem",
-            borderTop: "1px solid var(--border-subtle)",
-          }}
-        >
-          <button
-            type="submit"
-            disabled={mutation.isPending}
-            style={{
-              flex: 1,
-              padding: "0.875rem",
-              background: "var(--accent-cta)",
-              color: "var(--text-on-accent)",
-              border: "none",
-              borderRadius: "8px",
-              fontWeight: 600,
-              cursor: mutation.isPending ? "not-allowed" : "pointer",
               display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: "0.5rem",
-              transition: "background 150ms ease",
+              gap: "1rem",
+              marginTop: "1rem",
+              paddingTop: "1.5rem",
+              borderTop: "1px solid var(--border-subtle)",
             }}
           >
-            {mutation.isPending ? (
-              <Loader2 size={18} className="animate-spin" />
-            ) : (
-              <Plus size={18} />
-            )}
-            Submit for Approval
-          </button>
-        </div>
-      </form>
-    </div>
+            <button
+              type="submit"
+              disabled={mutation.isPending}
+              style={{
+                flex: 1,
+                padding: "0.875rem",
+                background: "var(--accent-cta)",
+                color: "var(--text-on-accent)",
+                border: "none",
+                borderRadius: "8px",
+                fontWeight: 600,
+                cursor: mutation.isPending ? "not-allowed" : "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "0.5rem",
+                transition: "background 150ms ease",
+              }}
+            >
+              {mutation.isPending ? (
+                <Loader2 size={18} className="animate-spin" />
+              ) : (
+                <Plus size={18} />
+              )}
+              Submit for Approval
+            </button>
+          </div>
+        </form>
+      </div>
+    </>
   );
 }
+// --- END OF FILE src/pages/CreateTournamentPage.tsx ---

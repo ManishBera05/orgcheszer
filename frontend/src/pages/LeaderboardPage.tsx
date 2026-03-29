@@ -17,35 +17,7 @@ interface ColDef {
   width?: string;
 }
 
-// UPDATED SWISS COLS WITH NEW TIEBREAKERS
-const SWISS_COLS: ColDef[] = [
-  { key: "score", label: "Score", title: "Total points (W=1, D=½, Bye=1)" },
-  { key: "directEncounterScore", label: "DE", title: "Direct Encounter" },
-  {
-    key: "buchholzCut1",
-    label: "BH-1",
-    title: "Buchholz Cut-1: Buchholz minus lowest-scoring opponent",
-  },
-  {
-    key: "buchholzCut2",
-    label: "BH-2",
-    title: "Buchholz Cut-2: Buchholz minus 2 lowest-scoring opponents",
-  },
-  {
-    key: "buchholzMedian",
-    label: "BH-M",
-    title: "Buchholz Median: Buchholz minus highest and lowest",
-  },
-  {
-    key: "buchholz",
-    label: "BH",
-    title: "Buchholz: sum of all opponents' scores",
-  },
-  { key: "sonnebornBerger", label: "SB", title: "Sonneborn-Berger" },
-  { key: "winsWithBlack", label: "W/B", title: "Wins with Black pieces" },
-  { key: "numberOfWins", label: "Wins", title: "Number of wins" },
-];
-
+// FORMAT SPECIFIC COLUMNS EXACTLY AS REQUESTED
 const RR_COLS: ColDef[] = [
   { key: "score", label: "Score", title: "Total points (W=1, D=½)" },
   { key: "directEncounterScore", label: "DE", title: "Direct Encounter" },
@@ -54,8 +26,18 @@ const RR_COLS: ColDef[] = [
     label: "SB",
     title: "Sonneborn-Berger: sum of defeated opponents' scores + ½ drawn",
   },
-  { key: "winsWithBlack", label: "W/B", title: "Wins with Black pieces" },
-  { key: "numberOfWins", label: "Wins", title: "Number of wins" },
+  { key: "numberOfWins", label: "Wins", title: "Number of victories" },
+  { key: "winsWithBlack", label: "W/B", title: "Number of wins with Black" },
+  { key: "totalGamesPlayed", label: "Games", title: "Total games played" },
+];
+
+const SWISS_COLS: ColDef[] = [
+  { key: "score", label: "Score", title: "Total points (W=1, D=½, Bye=1)" },
+  { key: "buchholzCut1", label: "BH-1", title: "Buchholz Cut 1" },
+  { key: "buchholzCut2", label: "BH-2", title: "Buchholz Cut 2" },
+  { key: "sonnebornBerger", label: "SB", title: "Sonneborn Berger" },
+  { key: "buchholzMedian", label: "BH-M", title: "Buchholz Median" },
+  { key: "totalGamesPlayed", label: "Games", title: "Total games played" },
 ];
 
 function getCols(format?: TournamentFormat | string): ColDef[] {

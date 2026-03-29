@@ -54,6 +54,7 @@ export interface TournamentResponse {
   tournamentName: string;
   startDateTime: string;
   numberOfRounds: number;
+  currentRound: number; // NEW API FIELD
   maxParticipants: number;
   entryFee: number;
   description: string;
@@ -61,7 +62,8 @@ export interface TournamentResponse {
   timeControl: string;
   format: TournamentFormat;
   organizerName: string;
-  organizerPhoneNumber: string;
+  organizerId: string;
+  organizerPhoneNumber: string | null;
   checkedInPlayers: number;
   currentNumberOfParticipants: number;
   status: TournamentStatus;
@@ -121,7 +123,6 @@ export interface LeaderboardEntryDTO {
   sonnebornBerger: number;
   gamesWithBlack: number;
   numberOfWins: number;
-  // NEW TIEBREAKERS
   buchholzCut2?: number;
   buchholzMedian?: number;
   winsWithBlack?: number;
@@ -193,6 +194,16 @@ export interface UserTournamentStatsDTO {
   draws: number;
   byesReceived: number;
   opponents: OpponentDTO[];
+}
+
+export interface UserDetailsDTO {
+  userId: string;
+  firstName: string;
+  lastName: string;
+  date_of_birth: string;
+  email: string;
+  mobileNo: string;
+  fideId: string;
 }
 
 export interface PlatformStatsDTO {

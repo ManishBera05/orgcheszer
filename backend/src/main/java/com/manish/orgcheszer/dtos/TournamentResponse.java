@@ -17,6 +17,7 @@ public class TournamentResponse {
     private String tournamentName;
     private LocalDateTime startDateTime;
     private int numberOfRounds;
+    private int currentRound;
     private int maxParticipants;
     private int entryFee;
     private String description;
@@ -24,6 +25,7 @@ public class TournamentResponse {
     private String timeControl;
     private String format;
     private String organizerName;
+    private UUID organizerId;
     private String organizerPhoneNumber;
     private int checkedInPlayers;
     private int currentNumberOfParticipants;

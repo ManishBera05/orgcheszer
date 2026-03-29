@@ -26,7 +26,7 @@ public class LeaderboardService {
     private final TournamentTicketRepository      ticketRepository;
     // GET LEADERBOARD
     // Returns sorted standings for a tournament at any point in time
-    @Transactional(readOnly = true)
+    @Transactional
     public Page<LeaderboardEntryDTO> getLeaderboard(UUID tournamentId, int page, int size) {
         Tournament tournament = tournamentRepository.findById(tournamentId)
                 .orElseThrow(() -> new RuntimeException("Tournament not found"));

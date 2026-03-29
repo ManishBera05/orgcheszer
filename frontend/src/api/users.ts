@@ -1,12 +1,13 @@
+// --- START OF FILE src/api/users.ts ---
 import api from "./axios";
 import type {
   PublicUserProfileDTO,
   UserTournamentStatsDTO,
   MyTournamentDTO,
+  UserDetailsDTO,
   Page,
 } from "../types";
 
-/* ─── Public profile ──────────────────────────────────────── */
 export async function getPublicProfile(
   userId: string,
 ): Promise<PublicUserProfileDTO> {
@@ -14,7 +15,6 @@ export async function getPublicProfile(
   return res.data;
 }
 
-/* ─── Per-tournament stats (public) ──────────────────────── */
 export async function getUserTournamentStats(
   userId: string,
   tournamentId: string,
@@ -25,9 +25,8 @@ export async function getUserTournamentStats(
   return res.data;
 }
 
-/* ─── My detailed tournament history (private) ───────────── */
 export interface MyTournamentsParams {
-  role?: string; // "PLAYER" | "ORGANIZER" | "STAFF"
+  role?: string;
   page?: number;
   size?: number;
 }
@@ -35,12 +34,11 @@ export interface MyTournamentsParams {
 export async function getMyTournamentHistory(
   params: MyTournamentsParams = {},
 ): Promise<Page<MyTournamentDTO>> {
-  // FIX: Changed from "/api/users/me" to "/api/users/my-tournaments"
   const res = await api.get<Page<MyTournamentDTO>>(
     "/api/users/my-tournaments",
     {
       params: {
-        ...(params.role ? { role: params.role } : {}),
+        ...(params.role && params.role !== "ALL" ? { role: params.role } : {}),
         page: params.page ?? 0,
         size: params.size ?? 10,
       },
@@ -48,3 +46,10 @@ export async function getMyTournamentHistory(
   );
   return res.data;
 }
+
+// NEW: Fetch private profile details
+export async function getMyProfile(): Promise<UserDetailsDTO> {
+  const res = await api.get<UserDetailsDTO>("/api/users/me");
+  return res.data;
+}
+// --- END OF FILE src/api/users.ts ---
