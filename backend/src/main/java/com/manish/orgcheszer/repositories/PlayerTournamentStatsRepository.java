@@ -34,4 +34,12 @@ public interface PlayerTournamentStatsRepository extends JpaRepository<PlayerTou
     Page<PlayerTournamentStats> findByTournamentTournamentId(UUID tournamentId, Pageable pageable);
     Page<PlayerTournamentStats> findByTournamentTournamentIdOrderByPairingId(UUID tournamentTournamentId, Pageable pageable);
     List<PlayerTournamentStats> findByTournamentTournamentIdOrderByCurrentScoreDesc(UUID tournamentId); // leaderboard
+
+    @Query("SELECT s FROM PlayerTournamentStats s " +
+            "JOIN TournamentTicket t ON t.player.id = s.player.id " +
+            "AND t.tournament.tournamentId = s.tournament.tournamentId " +
+            "WHERE s.tournament.tournamentId = :tournamentId " +
+            "AND t.status = 'CHECKED_IN' " +
+            "ORDER BY s.currentScore DESC")
+    List<PlayerTournamentStats> findCheckedInStatsByTournamentId(UUID tournamentId);
 }

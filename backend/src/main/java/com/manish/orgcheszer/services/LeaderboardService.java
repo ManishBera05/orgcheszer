@@ -23,6 +23,7 @@ public class LeaderboardService {
     private final PlayerTournamentStatsRepository statsRepository;
     private final RoundsRepository                roundsRepository;
     private final GameRepository                  gameRepository;
+    private final TournamentTicketRepository      ticketRepository;
     // GET LEADERBOARD
     // Returns sorted standings for a tournament at any point in time
     @Transactional(readOnly = true)
@@ -31,7 +32,7 @@ public class LeaderboardService {
                 .orElseThrow(() -> new RuntimeException("Tournament not found"));
 
         List<PlayerTournamentStats> allStats = statsRepository
-                .findByTournamentTournamentIdOrderByCurrentScoreDesc(tournamentId);
+                .findCheckedInStatsByTournamentId(tournamentId);
 
         List<LeaderboardEntryDTO> leaderboard = allStats.stream()
                 .map(stats -> LeaderboardEntryDTO.builder()
