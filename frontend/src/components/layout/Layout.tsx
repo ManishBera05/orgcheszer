@@ -1,3 +1,4 @@
+// --- START OF FILE src/components/layout/Layout.tsx ---
 import { useState, useEffect } from "react";
 import {
   Link,
@@ -301,11 +302,12 @@ export default function Layout() {
         }
 
         /* ── Breakpoints ── */
-        @media (max-width: 768px) {
+        /* FIX: Changed from 768px to 960px to prevent layout breaking between 770-900px */
+        @media (max-width: 960px) {
           .nav-desktop   { display: none; }
           .nav-hamburger { display: flex; }
         }
-        @media (min-width: 769px) {
+        @media (min-width: 961px) {
           .nav-mobile-drawer { display: none; }
         }
         @media (max-width: 480px) {
@@ -654,3 +656,4 @@ export default function Layout() {
     </>
   );
 }
+// --- END OF FILE src/components/layout/Layout.tsx ---

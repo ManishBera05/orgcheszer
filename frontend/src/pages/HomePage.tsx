@@ -399,7 +399,9 @@ export default function HomePage() {
                   textTransform: "uppercase",
                 }}
               >
-                FIDE-compliant
+                <a href="https://handbook.fide.com/chapter/C0401202507">
+                  FIDE-compliant
+                </a>
               </span>
             </div>
 
@@ -448,7 +450,10 @@ export default function HomePage() {
                 maxWidth: "480px",
               }}
             >
-              OrgCheszer handles Swiss & Round-Robin pairings, live FIDE
+              OrgCheszer handles Swiss & Round-Robin pairings, live{" "}
+              <a href="https://aicf.in/tie-break-regulations/">
+                <u>AICF</u>{" "}
+              </a>
               tiebreaker leaderboards, QR check-ins, and staff management — so
               you can focus on the game.
             </p>
