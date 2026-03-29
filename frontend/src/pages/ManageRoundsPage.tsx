@@ -1,12 +1,8 @@
 // --- START OF FILE src/pages/ManageRoundsPage.tsx ---
 import { useState, useEffect, useRef } from "react";
 import { useParams, Link, useSearchParams } from "react-router-dom";
-import {
-  useQuery,
-  useMutation,
-  useQueryClient,
-  useQueries,
-} from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Scanner } from "@yudiel/react-qr-scanner";
 import { toast } from "sonner";
 import {
   ArrowLeft,
@@ -22,6 +18,8 @@ import {
   Flag,
   QrCode,
   Search,
+  Camera,
+  X,
 } from "lucide-react";
 import {
   getTournament,
@@ -70,7 +68,6 @@ function GameRow({
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
-  // FIX: Permanently lock the row if it's a BYE.
   const isBye = game.result === "BYE" || game.blackName === "BYE";
   const isSettled = isLocked || isBye;
 
@@ -92,6 +89,9 @@ function GameRow({
       setOpen(false);
       queryClient.invalidateQueries({
         queryKey: ["pairings", tournamentId, roundNumber],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["latest-pairings", tournamentId],
       });
     },
     onError: (err: ApiError) =>
@@ -306,14 +306,17 @@ function GameRow({
 function CheckInTab({ tournamentId }: { tournamentId: string }) {
   const [searchParams] = useSearchParams();
   const [token, setToken] = useState(searchParams.get("token") ?? "");
+  const [showScanner, setShowScanner] = useState(false);
+
   const mutation = useMutation({
-    mutationFn: () => checkIn(tournamentId, token.trim()),
+    mutationFn: (tokenToVerify: string) =>
+      checkIn(tournamentId, tokenToVerify.trim()),
     onSuccess: () => {
-      toast.success("Player checked in!");
+      toast.success("Player checked in successfully!");
       setToken("");
     },
     onError: (err: ApiError) => {
-      toast.error(err?.message || "Invalid token.");
+      toast.error(err?.message || "Invalid ticket token.");
     },
   });
 
@@ -363,15 +366,106 @@ function CheckInTab({ tournamentId }: { tournamentId: string }) {
               color: "var(--text-muted)",
             }}
           >
-            Scan a player's Ticket Token to mark them physically present.
+            Scan a player's Ticket Token via camera, or type it manually.
           </p>
         </div>
       </div>
+
+      {showScanner ? (
+        <div
+          style={{
+            border: "1px solid var(--border-strong)",
+            borderRadius: "10px",
+            overflow: "hidden",
+            background: "black",
+          }}
+        >
+          <Scanner
+            onScan={(result) => {
+              if (!result || mutation.isPending) return;
+              const val = Array.isArray(result) ? result[0]?.rawValue : result;
+              if (val) {
+                setToken(val);
+                setShowScanner(false);
+                mutation.mutate(val);
+              }
+            }}
+          />
+          <button
+            onClick={() => setShowScanner(false)}
+            style={{
+              width: "100%",
+              padding: "0.875rem",
+              background: "var(--bg-elevated)",
+              color: "var(--text-primary)",
+              border: "none",
+              borderTop: "1px solid var(--border-strong)",
+              cursor: "pointer",
+              fontWeight: 600,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "0.5rem",
+            }}
+          >
+            <X size={16} /> Cancel Scan
+          </button>
+        </div>
+      ) : (
+        <button
+          onClick={() => setShowScanner(true)}
+          style={{
+            padding: "1rem",
+            background: "var(--bg-interactive)",
+            color: "var(--text-primary)",
+            border: "1px dashed var(--border-strong)",
+            borderRadius: "10px",
+            cursor: "pointer",
+            fontWeight: 600,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: "0.5rem",
+            transition: "background 150ms",
+          }}
+        >
+          <Camera size={18} /> Scan Ticket with Camera
+        </button>
+      )}
+
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "1rem",
+          margin: "0.5rem 0",
+        }}
+      >
+        <div
+          style={{ flex: 1, height: "1px", background: "var(--border-subtle)" }}
+        />
+        <span
+          style={{
+            fontSize: "0.75rem",
+            color: "var(--text-muted)",
+            textTransform: "uppercase",
+            fontWeight: 600,
+          }}
+        >
+          OR ENTER MANUALLY
+        </span>
+        <div
+          style={{ flex: 1, height: "1px", background: "var(--border-subtle)" }}
+        />
+      </div>
+
       <div style={{ display: "flex", gap: "0.5rem" }}>
         <input
           value={token}
           onChange={(e) => setToken(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && token && mutation.mutate()}
+          onKeyDown={(e) =>
+            e.key === "Enter" && token && mutation.mutate(token)
+          }
           placeholder="Ticket Token..."
           style={{
             flex: 1,
@@ -384,7 +478,7 @@ function CheckInTab({ tournamentId }: { tournamentId: string }) {
           }}
         />
         <button
-          onClick={() => mutation.mutate()}
+          onClick={() => mutation.mutate(token)}
           disabled={!token || mutation.isPending}
           style={{
             padding: "0 1.25rem",
@@ -745,33 +839,29 @@ export default function ManageRoundsPage() {
     enabled: !!tournamentId,
   });
 
-  const roundQueries = useQueries({
-    queries: Array.from({ length: tournament?.numberOfRounds || 0 }).map(
-      (_, i) => ({
-        queryKey: ["pairings", tournamentId, i + 1],
-        queryFn: () => getRoundPairings(tournamentId!, i + 1),
-        enabled: !!tournament,
-        retry: 0,
-      }),
-    ),
-  });
-
-  const generatedRounds = roundQueries
-    .map((q, i) => ({ round: i + 1, hasData: !!q.data?.pairings?.length }))
-    .filter((r) => r.hasData)
-    .map((r) => r.round);
-  const latestGeneratedRound =
-    generatedRounds.length > 0 ? Math.max(...generatedRounds) : 0;
+  const latestRound = tournament?.currentRound || 0;
 
   useEffect(() => {
-    if (currentRound === null && roundQueries.every((q) => !q.isLoading)) {
-      setCurrentRound(latestGeneratedRound > 0 ? latestGeneratedRound : 1);
+    if (currentRound === null && tournament) {
+      setCurrentRound(latestRound > 0 ? latestRound : 1);
     }
-  }, [roundQueries, currentRound, latestGeneratedRound]);
+  }, [tournament, currentRound, latestRound]);
 
   const round = currentRound ?? 1;
-  const activePairings = roundQueries[round - 1]?.data;
-  const isRoundLoading = roundQueries[round - 1]?.isLoading;
+
+  // 1. Fetch pairings for the CURRENTLY VIEWED round
+  const { data: activePairings, isLoading: isRoundLoading } = useQuery({
+    queryKey: ["pairings", tournamentId, round],
+    queryFn: () => getRoundPairings(tournamentId!, round),
+    enabled: !!tournamentId && round <= latestRound && latestRound > 0,
+  });
+
+  // 2. Fetch pairings for the LATEST round (Needed strictly to validate the Generate button)
+  const { data: latestPairings } = useQuery({
+    queryKey: ["latest-pairings", tournamentId, latestRound],
+    queryFn: () => getRoundPairings(tournamentId!, latestRound),
+    enabled: !!tournamentId && latestRound > 0 && round !== latestRound,
+  });
 
   const generateMut = useMutation({
     mutationFn: () => generateNextRound(tournamentId!),
@@ -779,7 +869,7 @@ export default function ManageRoundsPage() {
       toast.success("Pairings generated!");
       queryClient.invalidateQueries({ queryKey: ["tournament"] });
       queryClient.invalidateQueries({ queryKey: ["pairings"] });
-      setCurrentRound(latestGeneratedRound + 1);
+      setCurrentRound(latestRound + 1);
     },
     onError: (err: ApiError) =>
       toast.error(err.message || "Failed to generate round."),
@@ -812,28 +902,27 @@ export default function ManageRoundsPage() {
   const settledGames =
     activePairings?.pairings.filter((g) => g.result !== "PENDING") ?? [];
   const hasPairings = activePairings && activePairings.pairings.length > 0;
+  const isNotGenerated = round > latestRound || latestRound === 0;
 
   const canGoPrev = round > 1;
-  const canGoNext = round < latestGeneratedRound;
+  const canGoNext = round < latestRound;
 
-  const latestRoundPairings =
-    roundQueries[latestGeneratedRound - 1]?.data?.pairings || [];
-  const latestRoundPending = latestRoundPairings.filter(
-    (g) => g.result === "PENDING",
-  ).length;
+  const targetPairings =
+    round === latestRound ? activePairings : latestPairings;
+  const latestRoundPending =
+    targetPairings?.pairings.filter((g) => g.result === "PENDING").length || 0;
 
   const canGenerate =
-    latestGeneratedRound === 0 ||
-    (latestRoundPending === 0 &&
-      latestGeneratedRound < tournament.numberOfRounds);
+    latestRound === 0 ||
+    (latestRoundPending === 0 && latestRound < tournament.numberOfRounds);
   const canEndTournament =
-    latestGeneratedRound > 0 &&
+    latestRound > 0 &&
     latestRoundPending === 0 &&
     tournament.status !== "COMPLETED" &&
     tournament.status !== "CANCELLED";
 
   const isRoundLocked =
-    round < latestGeneratedRound ||
+    round < latestRound ||
     tournament.status === "COMPLETED" ||
     tournament.status === "CANCELLED";
 
@@ -921,10 +1010,10 @@ export default function ManageRoundsPage() {
 
           <button
             onClick={() => {
-              if (latestGeneratedRound < tournament.numberOfRounds) {
+              if (latestRound < tournament.numberOfRounds) {
                 if (
                   confirm(
-                    `WARNING: You are ending the tournament early (Round ${latestGeneratedRound} of ${tournament.numberOfRounds} completed).\n\nFinal standings will be permanently locked. Are you sure you want to proceed?`,
+                    `WARNING: You are ending the tournament early (Round ${latestRound} of ${tournament.numberOfRounds} completed).\n\nFinal standings will be permanently locked. Are you sure you want to proceed?`,
                   )
                 ) {
                   endTourneyMut.mutate();
@@ -1093,7 +1182,7 @@ export default function ManageRoundsPage() {
                     style={{ margin: "0 auto" }}
                   />
                 </div>
-              ) : !hasPairings ? (
+              ) : isNotGenerated ? (
                 <div style={{ padding: "5rem 1.5rem", textAlign: "center" }}>
                   <Swords
                     size={32}

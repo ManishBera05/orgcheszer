@@ -6,12 +6,8 @@ import {
   Link,
   useNavigate,
 } from "react-router-dom";
-import {
-  useQuery,
-  useMutation,
-  useQueryClient,
-  useQueries,
-} from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Scanner } from "@yudiel/react-qr-scanner";
 import { toast } from "sonner";
 import {
   Shield,
@@ -25,6 +21,8 @@ import {
   ChevronLeft,
   ChevronRight,
   ArrowLeft,
+  Camera,
+  X,
 } from "lucide-react";
 import { getMyTournamentHistory } from "../api/users";
 import { getTournament } from "../api/tournaments";
@@ -37,7 +35,6 @@ import {
 import TournamentCard from "../components/TournamentCard";
 import type { GamePairingDTO, GameResult, ApiError } from "../types";
 
-// Removed BYE from manual options
 const RESULT_OPTIONS: { value: GameResult; label: string; color: string }[] = [
   { value: "WHITE_WINS", label: "White wins", color: "var(--camel-400)" },
   { value: "BLACK_WINS", label: "Black wins", color: "var(--camel-400)" },
@@ -62,7 +59,6 @@ function GameRow({
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
-  // FIX: Permanently lock the row if it's a BYE.
   const isBye = game.result === "BYE" || game.blackName === "BYE";
   const isSettled = isLocked || game.result !== "PENDING" || isBye;
 
@@ -296,14 +292,17 @@ function GameRow({
 function CheckInTab({ tournamentId }: { tournamentId: string }) {
   const [searchParams] = useSearchParams();
   const [token, setToken] = useState(searchParams.get("token") ?? "");
+  const [showScanner, setShowScanner] = useState(false);
+
   const mutation = useMutation({
-    mutationFn: () => checkIn(tournamentId, token.trim()),
+    mutationFn: (tokenToVerify: string) =>
+      checkIn(tournamentId, tokenToVerify.trim()),
     onSuccess: () => {
-      toast.success("Player checked in!");
+      toast.success("Player checked in successfully!");
       setToken("");
     },
     onError: (err: ApiError) => {
-      toast.error(err?.message || "Invalid token.");
+      toast.error(err?.message || "Invalid ticket token.");
     },
   });
 
@@ -353,15 +352,106 @@ function CheckInTab({ tournamentId }: { tournamentId: string }) {
               color: "var(--text-muted)",
             }}
           >
-            Scan a player's Ticket Token to mark them physically present.
+            Scan a player's Ticket Token via camera, or type it manually.
           </p>
         </div>
       </div>
+
+      {showScanner ? (
+        <div
+          style={{
+            border: "1px solid var(--border-strong)",
+            borderRadius: "10px",
+            overflow: "hidden",
+            background: "black",
+          }}
+        >
+          <Scanner
+            onScan={(result) => {
+              if (!result || mutation.isPending) return;
+              const val = Array.isArray(result) ? result[0]?.rawValue : result;
+              if (val) {
+                setToken(val);
+                setShowScanner(false);
+                mutation.mutate(val);
+              }
+            }}
+          />
+          <button
+            onClick={() => setShowScanner(false)}
+            style={{
+              width: "100%",
+              padding: "0.875rem",
+              background: "var(--bg-elevated)",
+              color: "var(--text-primary)",
+              border: "none",
+              borderTop: "1px solid var(--border-strong)",
+              cursor: "pointer",
+              fontWeight: 600,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "0.5rem",
+            }}
+          >
+            <X size={16} /> Cancel Scan
+          </button>
+        </div>
+      ) : (
+        <button
+          onClick={() => setShowScanner(true)}
+          style={{
+            padding: "1rem",
+            background: "var(--bg-interactive)",
+            color: "var(--text-primary)",
+            border: "1px dashed var(--border-strong)",
+            borderRadius: "10px",
+            cursor: "pointer",
+            fontWeight: 600,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: "0.5rem",
+            transition: "background 150ms",
+          }}
+        >
+          <Camera size={18} /> Scan Ticket with Camera
+        </button>
+      )}
+
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "1rem",
+          margin: "0.5rem 0",
+        }}
+      >
+        <div
+          style={{ flex: 1, height: "1px", background: "var(--border-subtle)" }}
+        />
+        <span
+          style={{
+            fontSize: "0.75rem",
+            color: "var(--text-muted)",
+            textTransform: "uppercase",
+            fontWeight: 600,
+          }}
+        >
+          OR ENTER MANUALLY
+        </span>
+        <div
+          style={{ flex: 1, height: "1px", background: "var(--border-subtle)" }}
+        />
+      </div>
+
       <div style={{ display: "flex", gap: "0.5rem" }}>
         <input
           value={token}
           onChange={(e) => setToken(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && token && mutation.mutate()}
+          onKeyDown={(e) =>
+            e.key === "Enter" && token && mutation.mutate(token)
+          }
           placeholder="Ticket Token..."
           style={{
             flex: 1,
@@ -374,7 +464,7 @@ function CheckInTab({ tournamentId }: { tournamentId: string }) {
           }}
         />
         <button
-          onClick={() => mutation.mutate()}
+          onClick={() => mutation.mutate(token)}
           disabled={!token || mutation.isPending}
           style={{
             padding: "0 1.25rem",
@@ -439,33 +529,13 @@ export default function StaffPanelPage() {
     enabled: !!tournamentId,
   });
 
-  const roundQueries = useQueries({
-    queries: Array.from({ length: activeTournament?.numberOfRounds || 0 }).map(
-      (_, i) => ({
-        queryKey: ["pairings", tournamentId, i + 1],
-        queryFn: () => getRoundPairings(tournamentId!, i + 1),
-        enabled: !!tournamentId && !!activeTournament,
-        retry: 0,
-      }),
-    ),
-  });
-
-  const generatedRounds = roundQueries
-    .map((q, i) => ({ round: i + 1, hasData: !!q.data?.pairings?.length }))
-    .filter((r) => r.hasData)
-    .map((r) => r.round);
-  const latestGeneratedRound =
-    generatedRounds.length > 0 ? Math.max(...generatedRounds) : 0;
+  const latestRound = activeTournament?.currentRound || 0;
 
   useEffect(() => {
-    if (
-      tournamentId &&
-      currentRound === null &&
-      roundQueries.every((q) => !q.isLoading)
-    ) {
-      setCurrentRound(latestGeneratedRound > 0 ? latestGeneratedRound : 1);
+    if (tournamentId && currentRound === null && activeTournament) {
+      setCurrentRound(latestRound > 0 ? latestRound : 1);
     }
-  }, [roundQueries, currentRound, latestGeneratedRound, tournamentId]);
+  }, [activeTournament, currentRound, latestRound, tournamentId]);
 
   const redeemMut = useMutation({
     mutationFn: () => redeemStaffKey(keyToRedeem),
@@ -481,20 +551,29 @@ export default function StaffPanelPage() {
   });
 
   const round = currentRound ?? 1;
-  const activePairings = roundQueries[round - 1]?.data;
-  const isRoundLoading = roundQueries[round - 1]?.isLoading;
+
+  const { data: activePairings, isLoading: isRoundLoading } = useQuery({
+    queryKey: ["pairings", tournamentId, round],
+    queryFn: () => getRoundPairings(tournamentId!, round),
+    enabled:
+      !!tournamentId &&
+      round <= latestRound &&
+      latestRound > 0 &&
+      activeTab === "results",
+  });
 
   const pendingGames =
     activePairings?.pairings.filter((g) => g.result === "PENDING") ?? [];
   const settledGames =
     activePairings?.pairings.filter((g) => g.result !== "PENDING") ?? [];
 
-  const canGoNext = round < latestGeneratedRound;
+  const canGoNext = round < latestRound;
   const canGoPrev = round > 1;
   const isRoundLocked =
-    round < latestGeneratedRound ||
+    round < latestRound ||
     activeTournament?.status === "COMPLETED" ||
     activeTournament?.status === "CANCELLED";
+  const isNotGenerated = round > latestRound || latestRound === 0;
 
   return (
     <>
@@ -808,8 +887,7 @@ export default function StaffPanelPage() {
                             style={{ margin: "0 auto" }}
                           />
                         </div>
-                      ) : !activePairings ||
-                        activePairings.pairings.length === 0 ? (
+                      ) : isNotGenerated ? (
                         <div style={{ padding: "3rem", textAlign: "center" }}>
                           <p style={{ color: "var(--text-muted)" }}>
                             Round {round} not generated yet.
