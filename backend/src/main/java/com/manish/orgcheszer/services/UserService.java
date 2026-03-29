@@ -12,6 +12,7 @@ import com.manish.orgcheszer.entities.Tournament;
 import com.manish.orgcheszer.entities.TournamentStaff;
 import com.manish.orgcheszer.entities.Users;
 import com.manish.orgcheszer.enums.GameResult;
+import com.manish.orgcheszer.exceptions.ResourceNotFoundException;
 import com.manish.orgcheszer.repositories.GameRepository;
 import com.manish.orgcheszer.repositories.PlayerTournamentStatsRepository;
 import com.manish.orgcheszer.repositories.RoundsRepository;
@@ -46,7 +47,7 @@ public class UserService {
     // ─────────────────────────────────────────────────────────────────────────
     public PublicUserProfileDTO getPublicProfile(UUID userId) {
         Users user = usersRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         // Aggregate game stats from PlayerTournamentStats
         long gamesWon   = statsRepository.sumWinsByPlayerId(userId);
@@ -225,9 +226,9 @@ public class UserService {
 
     public UserTournamentStatsDTO getUserTournamentStats(UUID userId, UUID tournamentId) {
         Users user = usersRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
         Tournament tournament = tournamentRepository.findById(tournamentId)
-                .orElseThrow(() -> new RuntimeException("Tournament not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Tournament not found"));
 
         // Determine role
         String role;
@@ -250,7 +251,7 @@ public class UserService {
 
         PlayerTournamentStats stats = statsRepository
                 .findByPlayerIdAndTournamentTournamentId(userId, tournamentId)
-                .orElseThrow(() -> new RuntimeException("Stats not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Stats not found"));
 
         int wins   = stats.getWinsWithWhite()  + stats.getWinsWithBlack();
         int draws  = stats.getDrawsWithWhite() + stats.getDrawsWithBlack();
@@ -329,7 +330,7 @@ public class UserService {
         String email = SecurityContextHolder.getContext()
                 .getAuthentication().getName();
         return usersRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
     }
 
     private String resolveResultString(GameResult result, boolean isWhite) {

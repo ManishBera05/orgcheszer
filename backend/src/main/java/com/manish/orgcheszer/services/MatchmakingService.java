@@ -12,10 +12,13 @@ import com.manish.orgcheszer.enums.RegistrationRequestStatus;
 import com.manish.orgcheszer.enums.RoundStatus;
 import com.manish.orgcheszer.enums.TournamentFormat;
 import com.manish.orgcheszer.enums.TournamentStatus;
+import com.manish.orgcheszer.exceptions.BadRequestException;
+import com.manish.orgcheszer.exceptions.ConflictException;
+import com.manish.orgcheszer.exceptions.ResourceNotFoundException;
+import com.manish.orgcheszer.exceptions.UnauthorizedActionException;
 import com.manish.orgcheszer.repositories.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationContext;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -42,7 +45,7 @@ public class MatchmakingService {
     public RoundPairingsResponse getRoundPairings(UUID tournamentId, int roundNumber) {
         Rounds round = roundsRepository
                 .findByTournamentTournamentIdAndRoundNumber(tournamentId, roundNumber)
-                .orElseThrow(() -> new RuntimeException("Round not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Round not found"));
 
         List<GamePairingDTO> pairs = gameRepository.findByRoundId(round.getId())
                 .stream()
@@ -69,22 +72,22 @@ public class MatchmakingService {
         // Auth check : only organizers can generate pairing for next rounds
         Users currentUser = getCurrentUser();
         Tournament tournament = tournamentRepository.findById(tournamentId)
-                .orElseThrow(() -> new RuntimeException("Tournament not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Tournament not found"));
 
         if (!tournament.getOrganizer().getId().equals(currentUser.getId())) {
-            throw new AccessDeniedException("Only the organizer can generate pairings");
+            throw new UnauthorizedActionException("Only the organizer can generate pairings");
         }
 
         // Status checks : checks whether max number of rounds are reached or more rounds pairings are even possible
         if (tournament.getStatus() == TournamentStatus.COMPLETED) {
-            throw new RuntimeException("Tournament is already completed");
+            throw new ConflictException("Tournament is already completed");
         }
         if (tournament.getStatus() == TournamentStatus.CANCELLED) {
-            throw new RuntimeException("Tournament is cancelled");
+            throw new ConflictException("Tournament is cancelled");
         }
 
         if(LocalDateTime.now().isBefore(tournament.getStartDateTime())){
-            throw new RuntimeException("Cannot generate rounds before the tournament starts");
+            throw new BadRequestException("Cannot generate rounds before the tournament starts");
         }
 
 //        if(tournament)
@@ -95,7 +98,7 @@ public class MatchmakingService {
         int nextRoundNumber = existingRounds.size() + 1;
 
         if (nextRoundNumber > tournament.getNumberOfRounds()) {
-            throw new RuntimeException("All rounds have already been generated");
+            throw new ConflictException("All rounds have already been generated");
         }
 
         // checks whether all the games result is mentioned
@@ -106,7 +109,7 @@ public class MatchmakingService {
                     .stream()
                     .anyMatch(g -> g.getResult() == null || g.getResult() == GameResult.PENDING);
             if (hasUnfinishedGames) {
-                throw new RuntimeException(
+                throw new BadRequestException(
                         "Cannot generate next round — round " + lastRound.getRoundNumber()
                                 + " still has unfinished games");
             }
@@ -114,11 +117,11 @@ public class MatchmakingService {
 
         List<UUID> checkedInIds = ticketRepository.findCheckedInPlayerIds(tournamentId);
         if (checkedInIds.isEmpty()) {
-            throw new RuntimeException(
+            throw new BadRequestException(
                     "No players have checked in yet — scan player tickets before generating pairings");
         }
         if (checkedInIds.size() < 4) {
-            throw new RuntimeException("At least 4 players must be checked in to generate pairings");
+            throw new BadRequestException("At least 4 players must be checked in to generate pairings");
         }
 
         if (nextRoundNumber == 1) {
@@ -166,7 +169,7 @@ public class MatchmakingService {
 
         if (tournament.getFormat() == TournamentFormat.ROUND_ROBIN) {
             if (nextRoundNumber > 1) {
-                throw new RuntimeException(
+                throw new ConflictException(
                         "Round Robin pairings are generated all at once — all rounds already exist");
             }
             generateAllRoundRobinRounds(tournament, standings, engine);
@@ -182,11 +185,11 @@ public class MatchmakingService {
                 tournament.setStatus(TournamentStatus.COMPLETED);
                 tournament.setNumberOfRounds(nextRoundNumber - 1);
                 tournamentRepository.save(tournament);
-                throw new RuntimeException(
+                throw new ConflictException(
                         "No valid pairings possible — all players have already played each other. " +
                                 "Tournament finalized at round " + (nextRoundNumber - 1));
             }
-            throw new RuntimeException("Pairing engine returned no pairings, check TRF file format");
+            throw new ConflictException("Pairing engine returned no pairings, check TRF file format");
         }
 
         Rounds newRound = new Rounds();
@@ -199,7 +202,7 @@ public class MatchmakingService {
         int boardNumber = 1;
         for (Pairing pairing : pairings) {
             Users whitePlayer = usersRepository.findById(pairing.getWhitePlayerId())
-                    .orElseThrow(() -> new RuntimeException("White player not found"));
+                    .orElseThrow(() -> new ResourceNotFoundException("White player not found"));
 
             Game game = new Game();
             game.setRound(newRound);
@@ -220,7 +223,7 @@ public class MatchmakingService {
 
             } else {
                 Users blackPlayer = usersRepository.findById(pairing.getBlackPlayerId())
-                        .orElseThrow(() -> new RuntimeException("Black player not found"));
+                        .orElseThrow(() -> new ResourceNotFoundException("Black player not found"));
                 game.setBlackPlayer(blackPlayer);
                 game.setResult(GameResult.PENDING);
             }
@@ -235,36 +238,36 @@ public class MatchmakingService {
     public void submitResult(UUID tournamentId, UUID gameId, GameResult result) {
         Users currentUser = getCurrentUser();
         Tournament tournament = tournamentRepository.findById(tournamentId)
-                .orElseThrow(() -> new RuntimeException("Tournament not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Tournament not found"));
 
         boolean isOrganizer = tournament.getOrganizer().getId().equals(currentUser.getId());
         boolean isStaff = tournament.getStaffs().stream()
                 .anyMatch(s -> s.getUser().getId().equals(currentUser.getId()));
 
         if (!isOrganizer && !isStaff) {
-            throw new AccessDeniedException("Only organizer or staff can submit results");
+            throw new UnauthorizedActionException("Only organizer or staff can submit results");
         }
 
         if(tournament.getStatus() != TournamentStatus.ONGOING){
-            throw new RuntimeException("Cannot submit result if a tournament isn't ongoing.");
+            throw new BadRequestException("Cannot submit result if a tournament isn't ongoing.");
         }
 
         Game game = gameRepository.findById(gameId)
-                .orElseThrow(() -> new RuntimeException("Game not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Game not found"));
 
         // guard against bye games
         if (game.getBlackPlayer() == null) {
-            throw new RuntimeException("Cannot manually submit result for a bye game");
+            throw new BadRequestException("Cannot manually submit result for a bye game");
         }
         if (result == GameResult.PENDING || result == GameResult.BYE) {
-            throw new RuntimeException("Invalid result submitted");
+            throw new BadRequestException("Invalid result submitted");
         }
 
         boolean isResultAlreadySet = game.getResult() != null
                 && game.getResult() != GameResult.PENDING;
 
         if (isResultAlreadySet && !isOrganizer) {
-            throw new AccessDeniedException(
+            throw new UnauthorizedActionException(
                     "Result already submitted — only the organizer can change it");
         }
 
@@ -275,7 +278,7 @@ public class MatchmakingService {
                             tournamentId, currentRoundNumber + 1)
                     .isPresent();
             if (nextRoundExists) {
-                throw new RuntimeException(
+                throw new ConflictException(
                         "Cannot change result — round " + (currentRoundNumber + 1)
                                 + " has already been generated");
             }
@@ -336,7 +339,7 @@ public class MatchmakingService {
             int boardNumber = 1;
             for (Pairing pairing : entry.getValue()) {
                 Users whitePlayer = usersRepository.findById(pairing.getWhitePlayerId())
-                        .orElseThrow(() -> new RuntimeException("Player not found"));
+                        .orElseThrow(() -> new ResourceNotFoundException("Player not found"));
 
                 Game game = new Game();
                 game.setRound(round);
@@ -350,7 +353,7 @@ public class MatchmakingService {
                             tournament.getTournamentId(), GameResult.BYE, true);
                 } else {
                     Users blackPlayer = usersRepository.findById(pairing.getBlackPlayerId())
-                            .orElseThrow(() -> new RuntimeException("Player not found"));
+                            .orElseThrow(() -> new ResourceNotFoundException("Player not found"));
                     game.setBlackPlayer(blackPlayer);
                     game.setResult(GameResult.PENDING);
                 }
@@ -367,7 +370,7 @@ public class MatchmakingService {
                                    GameResult result, boolean isWhite) {
         PlayerTournamentStats stats = statsRepository
                 .findByPlayerIdAndTournamentTournamentId(playerId, tournamentId)
-                .orElseThrow(() -> new RuntimeException("Player stats not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Player stats not found"));
 
         double points = switch (result) {
             case WHITE_WINS -> isWhite ? 1.0 : 0.0;
@@ -399,7 +402,7 @@ public class MatchmakingService {
                                     GameResult oldResult, boolean wasWhite) {
         PlayerTournamentStats stats = statsRepository
                 .findByPlayerIdAndTournamentTournamentId(playerId, tournamentId)
-                .orElseThrow(() -> new RuntimeException("Player stats not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Player stats not found"));
 
         double pointsToRemove = switch (oldResult) {
             case WHITE_WINS -> wasWhite ? 1.0 : 0.0;
@@ -537,6 +540,6 @@ public class MatchmakingService {
     private Users getCurrentUser() {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         return usersRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
     }
 }

@@ -4,6 +4,7 @@ import com.manish.orgcheszer.dtos.LeaderboardEntryDTO;
 import com.manish.orgcheszer.entities.*;
 import com.manish.orgcheszer.enums.GameResult;
 import com.manish.orgcheszer.enums.TournamentFormat;
+import com.manish.orgcheszer.exceptions.ResourceNotFoundException;
 import com.manish.orgcheszer.repositories.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -29,7 +30,7 @@ public class LeaderboardService {
     @Transactional
     public Page<LeaderboardEntryDTO> getLeaderboard(UUID tournamentId, int page, int size) {
         Tournament tournament = tournamentRepository.findById(tournamentId)
-                .orElseThrow(() -> new RuntimeException("Tournament not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Tournament not found"));
 
         List<PlayerTournamentStats> allStats = statsRepository
                 .findCheckedInStatsByTournamentId(tournamentId);
@@ -75,7 +76,7 @@ public class LeaderboardService {
             UUID currentPlayerId = currentPlayer.getPlayerID();
             PlayerTournamentStats requiredPlayer = statsRepository
                     .findByPlayerIdAndTournamentTournamentId(currentPlayerId,tournamentId)
-                    .orElseThrow(() -> new RuntimeException("Round not found"));
+                    .orElseThrow(() -> new ResourceNotFoundException("Round not found"));
             requiredPlayer.setFinalRank(i+1);
             statsRepository.save(requiredPlayer);
         }
@@ -196,7 +197,7 @@ public class LeaderboardService {
                 .flatMap(r -> gameRepository.findByRoundId(r.getId()).stream())
                 .filter(g -> g.getResult() != null)
                 .filter(g -> g.getResult() != GameResult.PENDING)
-                .collect(Collectors.toList());
+                .toList();
 
         for (PlayerTournamentStats stats : allStats) {
             UUID playerId = stats.getPlayer().getId();
@@ -205,7 +206,7 @@ public class LeaderboardService {
                     .filter(g -> g.getBlackPlayer() != null)
                     .filter(g -> g.getWhitePlayer().getId().equals(playerId)
                             || g.getBlackPlayer().getId().equals(playerId))
-                    .collect(Collectors.toList());
+                    .toList();
 
             // Collect opponent scores
             List<Double> opponentScores = playerGames.stream()
@@ -217,7 +218,7 @@ public class LeaderboardService {
                         return opp != null ? opp.getCurrentScore() : 0.0;
                     })
                     .sorted()
-                    .collect(Collectors.toList());
+                    .toList();
 
             double buchholz = opponentScores.stream()
                     .mapToDouble(Double::doubleValue).sum();
@@ -225,7 +226,7 @@ public class LeaderboardService {
             // ── Buchholz Cut 1 — remove lowest ───────────────────────────────
             double buchholzCut1 = buchholz;
             if (!opponentScores.isEmpty()) {
-                buchholzCut1 = buchholz - opponentScores.get(0);
+                buchholzCut1 = buchholz - opponentScores.getFirst();
             }
 
             // ── Buchholz Cut 2 — remove two lowest ───────────────────────────
@@ -235,14 +236,14 @@ public class LeaderboardService {
                         - opponentScores.get(0)
                         - opponentScores.get(1);
             } else if (opponentScores.size() == 1) {
-                buchholzCut2 = buchholz - opponentScores.get(0);
+                buchholzCut2 = buchholz - opponentScores.getFirst();
             }
 
             // ── Buchholz Median — remove highest AND lowest ───────────────────
             double buchholzMedian = buchholz;
             if (opponentScores.size() >= 2) {
-                double lowest  = opponentScores.get(0);
-                double highest = opponentScores.get(opponentScores.size() - 1);
+                double lowest  = opponentScores.getFirst();
+                double highest = opponentScores.getLast();
                 buchholzMedian = buchholz - lowest - highest;
             }
 

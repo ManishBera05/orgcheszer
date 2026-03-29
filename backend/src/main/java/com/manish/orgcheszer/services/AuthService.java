@@ -4,6 +4,8 @@ import com.manish.orgcheszer.dtos.AuthResponse;
 import com.manish.orgcheszer.dtos.LoginRequest;
 import com.manish.orgcheszer.dtos.RegisterRequest;
 import com.manish.orgcheszer.entities.Users;
+import com.manish.orgcheszer.exceptions.ConflictException;
+import com.manish.orgcheszer.exceptions.ResourceNotFoundException;
 import com.manish.orgcheszer.repositories.UsersRepository;
 import com.manish.orgcheszer.security.JwtService;
 import lombok.RequiredArgsConstructor;
@@ -24,7 +26,7 @@ public class AuthService {
     public AuthResponse register(RegisterRequest request) {
         // Check duplicate email
         if (usersRepository.existsByEmail(request.getEmail())) {
-            throw new RuntimeException("Email already registered");
+            throw new ConflictException("Email already registered");
         }
 
         Users user = new Users();
@@ -52,7 +54,7 @@ public class AuthService {
         );
 
         Users user = usersRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         String token = jwtService.generateToken(user);
         return new AuthResponse(token, "Login successful");

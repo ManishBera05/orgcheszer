@@ -2,6 +2,10 @@ package com.manish.orgcheszer.services;
 
 import com.manish.orgcheszer.entities.*;
 import com.manish.orgcheszer.enums.TicketStatus;
+import com.manish.orgcheszer.exceptions.BadRequestException;
+import com.manish.orgcheszer.exceptions.ConflictException;
+import com.manish.orgcheszer.exceptions.ResourceNotFoundException;
+import com.manish.orgcheszer.exceptions.UnauthorizedActionException;
 import com.manish.orgcheszer.repositories.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.AccessDeniedException;
@@ -29,7 +33,7 @@ public class TournamentTicketService {
         // Prevent duplicate tickets
         if (ticketRepository.existsByPlayerIdAndTournamentTournamentId(
                 player.getId(), tournament.getTournamentId())) {
-            throw new RuntimeException("Ticket already issued for this player");
+            throw new ConflictException("Ticket already issued for this player");
         }
 
         TournamentTicket ticket = new TournamentTicket();
@@ -49,29 +53,29 @@ public class TournamentTicketService {
     public void checkIn(String ticketToken, UUID tournamentId) {
         Users currentUser = getCurrentUser();
         Tournament tournament = tournamentRepository.findById(tournamentId)
-                .orElseThrow(() -> new RuntimeException("Tournament not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Tournament not found"));
 
         boolean isOrganizer = tournament.getOrganizer().getId().equals(currentUser.getId());
         boolean isStaff = tournamentStaffRepository
                 .existsByUserIdAndTournamentTournamentId(currentUser.getId(), tournamentId);
 
         if (!isOrganizer && !isStaff) {
-            throw new AccessDeniedException(
+            throw new UnauthorizedActionException(
                     "Only the organizer or staff of this tournament can check in players");
         }
 
         TournamentTicket ticket = ticketRepository.findByTicketToken(ticketToken)
-                .orElseThrow(() -> new RuntimeException("Invalid ticket token"));
+                .orElseThrow(() -> new ResourceNotFoundException("Invalid ticket token"));
 
         if (!ticket.getTournament().getTournamentId().equals(tournamentId)) {
-            throw new RuntimeException(
+            throw new BadRequestException(
                     "This ticket does not belong to tournament " + tournamentId);
         }
         if (ticket.getStatus() == TicketStatus.CHECKED_IN) {
-            throw new RuntimeException(player(ticket) + " is already checked in");
+            throw new ConflictException(player(ticket) + " is already checked in");
         }
         if (ticket.getStatus() == TicketStatus.CANCELLED) {
-            throw new RuntimeException(
+            throw new ConflictException(
                     "This ticket has been cancelled — player cannot check in");
         }
 
@@ -98,6 +102,6 @@ public class TournamentTicketService {
         String email = SecurityContextHolder.getContext()
                 .getAuthentication().getName();
         return usersRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
     }
 }

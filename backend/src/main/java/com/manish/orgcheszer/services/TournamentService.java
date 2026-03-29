@@ -15,6 +15,10 @@ import com.manish.orgcheszer.enums.RegistrationRequestStatus;
 import com.manish.orgcheszer.enums.TicketStatus;
 import com.manish.orgcheszer.enums.TournamentFormat;
 import com.manish.orgcheszer.enums.TournamentStatus;
+import com.manish.orgcheszer.exceptions.BadRequestException;
+import com.manish.orgcheszer.exceptions.ConflictException;
+import com.manish.orgcheszer.exceptions.ResourceNotFoundException;
+import com.manish.orgcheszer.exceptions.UnauthorizedActionException;
 import com.manish.orgcheszer.repositories.GameRepository;
 import com.manish.orgcheszer.repositories.PlayerTournamentStatsRepository;
 import com.manish.orgcheszer.repositories.RegistrationRequestRepository;
@@ -29,7 +33,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
@@ -64,7 +67,7 @@ public class TournamentService {
                 .getName();
         System.out.println("error here : "+ email);
         return usersRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
     }
 
     // Create Tournament
@@ -104,7 +107,7 @@ public class TournamentService {
             try {
                 tournamentStatus = TournamentStatus.valueOf(status.toUpperCase());
             } catch (IllegalArgumentException e) {
-                throw new RuntimeException(
+                throw new BadRequestException(
                         "Invalid status. Use: UPCOMING, ONGOING, COMPLETED or CANCELLED");
             }
             tournaments = tournamentRepository
@@ -116,25 +119,25 @@ public class TournamentService {
 
     public TournamentResponse getTournament(UUID tournamentId) {
         Tournament tournament = tournamentRepository.findById(tournamentId)
-                .orElseThrow(() -> new RuntimeException("Tournament not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Tournament not found"));
         return mapToResponse(tournament);
     }
 
     public TournamentResponse updateTournament(UUID tournamentId, TournamentCreateRequest request) {
         validateTournamentRequest(request);
         Tournament tournament = tournamentRepository.findById(tournamentId)
-                .orElseThrow(() -> new RuntimeException("Tournament not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Tournament not found"));
 
         Users currentUser = getCurrentUser();
         if (!tournament.getOrganizer().getId().equals(currentUser.getId())) {
-            throw new AccessDeniedException("Only the organizer can update this tournament");
+            throw new UnauthorizedActionException("Only the organizer can update this tournament");
         }
 
         if (tournament.getStatus() != TournamentStatus.UPCOMING) {
-            throw new RuntimeException("Cannot update a tournament that has already started");
+            throw new ConflictException("Cannot update a tournament that has already started");
         }
         if(tournament.getPlayers().size() > request.getMaxParticipants()){
-            throw new RuntimeException("The number of registered players already more than the set max");
+            throw new ConflictException("The number of registered players already more than the set max");
         }
 
         tournament.setTournamentName(request.getTournamentName());
@@ -153,16 +156,16 @@ public class TournamentService {
 
     public void cancelTournament(UUID tournamentId) {
         Tournament tournament = tournamentRepository.findById(tournamentId)
-                .orElseThrow(() -> new RuntimeException("Tournament not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Tournament not found"));
 
         Users currentUser = getCurrentUser();
         if (!tournament.getOrganizer().getId().equals(currentUser.getId())) {
-            throw new AccessDeniedException("Only the organizer can cancel this tournament");
+            throw new UnauthorizedActionException("Only the organizer can cancel this tournament");
         }
 
         if (tournament.getStatus() == TournamentStatus.COMPLETED ||
                 tournament.getStatus() == TournamentStatus.ONGOING) {
-            throw new RuntimeException("Cannot cancel a completed or ongoing tournament");
+            throw new ConflictException("Cannot cancel a completed or ongoing tournament");
         }
 
         // Delete All pending registration requests for this tournament
@@ -175,31 +178,31 @@ public class TournamentService {
     public RegistrationRequestDTO registerPlayer(UUID tournamentId) {
         Users currentUser = getCurrentUser();
         Tournament tournament = tournamentRepository.findById(tournamentId)
-                .orElseThrow(() -> new RuntimeException("Tournament not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Tournament not found"));
 
         // Validations
         if (tournament.getStatus() != TournamentStatus.UPCOMING) {
-            throw new RuntimeException("Registration is closed for this tournament");
+            throw new ConflictException("Registration is closed for this tournament");
         }
-//        if (tournament.getPlayers().size() >= tournament.getMaxParticipants()) {
-//            throw new RuntimeException("Tournament is full");
-//        }
+        if (tournament.getPlayers().size() >= tournament.getMaxParticipants()) {
+            throw new ConflictException("Tournament is full");
+        }
         if (playerTournamentStatsRepository
                 .existsByPlayerIdAndTournamentTournamentId(
                         currentUser.getId(), tournamentId)) {
-            throw new RuntimeException("You are already registered for this tournament");
+            throw new ConflictException("You are already registered for this tournament");
         }
         if (tournament.getOrganizer().getId().equals(currentUser.getId())) {
-            throw new RuntimeException("Organizer cannot register as a player");
+            throw new ConflictException("Organizer cannot register as a player");
         }
         if(tournamentStaffRepository.existsByUserIdAndTournamentTournamentId(currentUser.getId(),tournamentId)){
-            throw new RuntimeException("Staff member cannot register as a player");
+            throw new ConflictException("Staff member cannot register as a player");
         }
 
         if (tournament.getEntryFee() == 0) {
             // ── FREE TOURNAMENT: existing flow unchanged ───────────────────────
             if (tournament.getPlayers().size() >= tournament.getMaxParticipants()) {
-                throw new RuntimeException("Tournament is full");
+                throw new ConflictException("Tournament is full");
             }
             return addPlayerToTournament(currentUser, tournament);
         } else {
@@ -236,7 +239,7 @@ public class TournamentService {
                 .existsByPlayerIdAndTournamentTournamentIdAndStatus(
                         player.getId(), tournamentId,
                         RegistrationRequestStatus.PENDING)) {
-            throw new RuntimeException(
+            throw new ConflictException(
                     "You already have a pending registration request for this tournament");
         }
 
@@ -249,7 +252,7 @@ public class TournamentService {
         long totalRequests = pendingCount + approvedCount;
 
         if (totalRequests >= (long) tournament.getMaxParticipants() * 3) {
-            throw new RuntimeException(
+            throw new ConflictException(
                     "Registration requests are full for this tournament");
         }
 
@@ -273,11 +276,11 @@ public class TournamentService {
 // ─────────────────────────────────────────────────────────────────────────────
     public Page<RegistrationRequestDTO> getPendingRequests(UUID tournamentId, int page, int size) {
         Tournament tournament = tournamentRepository.findById(tournamentId)
-                .orElseThrow(() -> new RuntimeException("Tournament not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Tournament not found"));
 
         Users currentUser = getCurrentUser();
         if (!tournament.getOrganizer().getId().equals(currentUser.getId())) {
-            throw new AccessDeniedException(
+            throw new UnauthorizedActionException(
                     "Only the organizer can view registration requests");
         }
 
@@ -300,37 +303,37 @@ public class TournamentService {
 // ─────────────────────────────────────────────────────────────────────────────
     public void approveRequest(UUID tournamentId, UUID requestId) {
         Tournament tournament = tournamentRepository.findById(tournamentId)
-                .orElseThrow(() -> new RuntimeException("Tournament not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Tournament not found"));
 
         Users currentUser = getCurrentUser();
         if (!tournament.getOrganizer().getId().equals(currentUser.getId())) {
-            throw new AccessDeniedException(
+            throw new UnauthorizedActionException(
                     "Only the organizer can approve registration requests");
         }
 
         RegistrationRequest request = registrationRequestRepository
                 .findById(requestId)
-                .orElseThrow(() -> new RuntimeException("Registration request not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Registration request not found"));
 
         // Verify request belongs to this tournament
         if (!request.getTournament().getTournamentId().equals(tournamentId)) {
-            throw new RuntimeException(
+            throw new ConflictException(
                     "This request does not belong to this tournament");
         }
 
         if (request.getStatus() != RegistrationRequestStatus.PENDING) {
-            throw new RuntimeException("This request is no longer pending");
+            throw new ConflictException("This request is no longer pending");
         }
 
         // Capacity check at approval time
         if (tournament.getPlayers().size() >= tournament.getMaxParticipants()) {
-            throw new RuntimeException(
+            throw new ConflictException(
                     "Tournament is full — cannot approve more players");
         }
 
         // Tournament must still be upcoming
         if (tournament.getStatus() != TournamentStatus.UPCOMING) {
-            throw new RuntimeException(
+            throw new ConflictException(
                     "Cannot approve requests — tournament is no longer upcoming");
         }
 
@@ -344,25 +347,25 @@ public class TournamentService {
 // ─────────────────────────────────────────────────────────────────────────────
     public void rejectRequest(UUID tournamentId, UUID requestId) {
         Tournament tournament = tournamentRepository.findById(tournamentId)
-                .orElseThrow(() -> new RuntimeException("Tournament not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Tournament not found"));
 
         Users currentUser = getCurrentUser();
         if (!tournament.getOrganizer().getId().equals(currentUser.getId())) {
-            throw new AccessDeniedException(
+            throw new UnauthorizedActionException(
                     "Only the organizer can reject registration requests");
         }
 
         RegistrationRequest request = registrationRequestRepository
                 .findById(requestId)
-                .orElseThrow(() -> new RuntimeException("Registration request not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Registration request not found"));
 
         if (!request.getTournament().getTournamentId().equals(tournamentId)) {
-            throw new RuntimeException(
+            throw new ConflictException(
                     "This request does not belong to this tournament");
         }
 
         if (request.getStatus() != RegistrationRequestStatus.PENDING) {
-            throw new RuntimeException("This request is no longer pending");
+            throw new ConflictException("This request is no longer pending");
         }
 
         // Silently delete — player can reapply
@@ -375,7 +378,7 @@ public class TournamentService {
 
             // Cap Round Robin at 32 players
             if (request.getMaxParticipants() > 32) {
-                throw new RuntimeException(
+                throw new BadRequestException(
                         "Round Robin tournaments cannot have more than 32 participants " +
                                 "— " + request.getMaxParticipants() + " players would require " +
                                 (request.getMaxParticipants() - 1) + " rounds which is not feasible");
@@ -388,7 +391,7 @@ public class TournamentService {
                     : request.getMaxParticipants();
 
             if (request.getNumberOfRounds() != expectedRounds) {
-                throw new RuntimeException(
+                throw new BadRequestException(
                         "Round Robin tournament with " + request.getMaxParticipants() +
                                 " participants must have exactly " + expectedRounds + " rounds, " +
                                 "not " + request.getNumberOfRounds());
@@ -398,25 +401,25 @@ public class TournamentService {
         if (Objects.equals(request.getFormat(), TournamentFormat.SWISS.toString())) {
             // Swiss needs at least 2 rounds to be meaningful
             if (request.getNumberOfRounds() < 2) {
-                throw new RuntimeException(
+                throw new BadRequestException(
                         "Swiss tournaments must have at least 2 rounds");
             }
 
             // Swiss needs at least 4 players
             if (request.getMaxParticipants() < 4) {
-                throw new RuntimeException(
+                throw new BadRequestException(
                         "Swiss tournaments must have at least 4 participants");
             }
         }
 
         // Common validations for all formats
         if (request.getStartDateTime().isBefore(LocalDateTime.now())) {
-            throw new RuntimeException(
+            throw new BadRequestException(
                     "Tournament start time cannot be in the past");
         }
 
         if (request.getEntryFee() < 0) {
-            throw new RuntimeException(
+            throw new BadRequestException(
                     "Entry fee cannot be negative");
         }
     }
@@ -426,7 +429,7 @@ public class TournamentService {
         TournamentTicket ticket = ticketRepository
                 .findByPlayerIdAndTournamentTournamentId(
                         currentUser.getId(), tournamentId)
-                .orElseThrow(() -> new RuntimeException(
+                .orElseThrow(() -> new ResourceNotFoundException(
                         "No ticket found — you are not registered for this tournament"));
         return ticket.getTicketToken();
     }
@@ -468,7 +471,7 @@ public class TournamentService {
 
     public Page<TournamentPlayerDTO> getTournamentPlayers(UUID tournamentId, int page, int size) {
         Tournament tournament = tournamentRepository.findById(tournamentId)
-                .orElseThrow(() -> new RuntimeException("Tournament not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Tournament not found"));
 
         Pageable pageable = PageRequest.of(page, size);
 
@@ -516,10 +519,10 @@ public class TournamentService {
 
     public void approveDraftTournament(UUID tournamentId){
         Tournament tournament = tournamentRepository.findById(tournamentId)
-                .orElseThrow(() -> new RuntimeException("Tournament not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Tournament not found"));
 
         if (tournament.getStatus() != TournamentStatus.DRAFT) {
-            throw new RuntimeException(
+            throw new ConflictException(
                     "Tournament is not in DRAFT status — current status: "
                             + tournament.getStatus());
         }
@@ -569,10 +572,10 @@ public class TournamentService {
 
     public void deleteDraftTournament(UUID tournamentId) {
         Tournament tournament = tournamentRepository.findById(tournamentId)
-                .orElseThrow(() -> new RuntimeException("Tournament not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Tournament not found"));
 
         if (tournament.getStatus() != TournamentStatus.DRAFT) {
-            throw new RuntimeException(
+            throw new ConflictException(
                     "Cannot delete — tournament is not in DRAFT status");
         }
 
@@ -588,14 +591,14 @@ public class TournamentService {
     public void endTournament(UUID tournamentId) {
         Users currentUser = getCurrentUser();
         Tournament tournament = tournamentRepository.findById(tournamentId)
-                .orElseThrow(() -> new RuntimeException("Tournament not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Tournament not found"));
 
         if (!tournament.getOrganizer().getId().equals(currentUser.getId())) {
-            throw new AccessDeniedException(
+            throw new UnauthorizedActionException(
                     "Only the organizer can end the tournament");
         }
         if (tournament.getStatus() != TournamentStatus.ONGOING) {
-            throw new RuntimeException(
+            throw new ConflictException(
                     "Tournament is not ongoing — current status: "
                             + tournament.getStatus());
         }
@@ -604,11 +607,11 @@ public class TournamentService {
                 .findByTournamentTournamentIdOrderByRoundNumber(tournamentId);
 
         if (existingRounds.isEmpty()) {
-            throw new RuntimeException(
+            throw new ConflictException(
                     "Cannot end — no rounds have been played yet");
         }
 
-        Rounds latestRound = existingRounds.get(existingRounds.size() - 1);
+        Rounds latestRound = existingRounds.getLast();
 
         boolean hasPendingGames = gameRepository
                 .findByRoundId(latestRound.getId())
@@ -617,7 +620,7 @@ public class TournamentService {
                         || g.getResult() == GameResult.PENDING);
 
         if (hasPendingGames) {
-            throw new RuntimeException(
+            throw new ConflictException(
                     "Cannot end tournament — round "
                             + latestRound.getRoundNumber()
                             + " still has unfinished games. "
