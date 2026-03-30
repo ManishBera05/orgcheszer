@@ -51,6 +51,7 @@ public class SecurityConfig {
                                 "/v3/api-docs",
                                 "/api/users/**",
                                 "/api/stats",
+                                "/actuator/**",
                                 "/error"    // built-in fallback endpoint used to handle errors that occur during request processing
                         ).permitAll()
                         // Only these specific tournament GET endpoints are public

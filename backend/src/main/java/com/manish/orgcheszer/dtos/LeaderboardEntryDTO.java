@@ -7,6 +7,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.io.Serializable;
 import java.util.UUID;
 
 @Getter
@@ -14,7 +15,7 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class LeaderboardEntryDTO {
+public class LeaderboardEntryDTO implements Serializable {
 
     @Schema(description = "Current standing in the tournament",
             example = "1")

@@ -3,6 +3,7 @@ package com.manish.orgcheszer.controllers;
 import com.manish.orgcheszer.dtos.RoundPairingsResponse;
 import com.manish.orgcheszer.enums.GameResult;
 import com.manish.orgcheszer.services.MatchmakingService;
+import com.manish.orgcheszer.services.RoundPairingsCacheService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -20,6 +21,7 @@ import java.util.UUID;
 public class MatchmakingController {
 
     private final MatchmakingService matchmakingService;
+    private final RoundPairingsCacheService roundPairingsCacheService;
 
     @Operation(summary = "Generate next round",
             description = "Organizer triggers API to generate pairings. Organizer only.",
@@ -50,6 +52,6 @@ public class MatchmakingController {
             @PathVariable UUID tournamentId,
             @PathVariable int roundNumber) {
         return ResponseEntity.ok(
-                matchmakingService.getRoundPairings(tournamentId, roundNumber));
+                roundPairingsCacheService.getRoundPairings(tournamentId, roundNumber));
     }
 }

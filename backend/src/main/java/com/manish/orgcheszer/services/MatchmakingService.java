@@ -18,6 +18,8 @@ import com.manish.orgcheszer.exceptions.ResourceNotFoundException;
 import com.manish.orgcheszer.exceptions.UnauthorizedActionException;
 import com.manish.orgcheszer.repositories.*;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.context.ApplicationContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -40,32 +42,13 @@ public class MatchmakingService {
     private final TournamentTicketRepository      ticketRepository;
     private final ApplicationContext              applicationContext;
     private final RegistrationRequestRepository   registrationRequestRepository;
+    private final RoundPairingsCacheService       roundPairingsCacheService;
 
     // PUBLIC METHODS
-    public RoundPairingsResponse getRoundPairings(UUID tournamentId, int roundNumber) {
-        Rounds round = roundsRepository
-                .findByTournamentTournamentIdAndRoundNumber(tournamentId, roundNumber)
-                .orElseThrow(() -> new ResourceNotFoundException("Round not found"));
 
-        List<GamePairingDTO> pairs = gameRepository.findByRoundId(round.getId())
-                .stream()
-                .map(g -> new GamePairingDTO(
-                        g.getId(),
-                        g.getWhitePlayer().getFirstName() + " " + g.getWhitePlayer().getLastName(),
-                        g.getBlackPlayer() != null
-                                ? g.getBlackPlayer().getFirstName() + " " + g.getBlackPlayer().getLastName()
-                                : "BYE",
-                        g.getWhitePlayer().getId(),
-                        g.getBlackPlayer() != null
-                                ? g.getBlackPlayer().getId(): new UUID(0,0),
-                        g.getBoardNumber(),
-                        g.getResult() != null ? g.getResult().name() : "PENDING"))
-                .collect(Collectors.toList());
-
-        return new RoundPairingsResponse(roundNumber, pairs,round.getStatus().name());
-    }
 
     // generate pairings for the next round, after all the results of the games are submitted
+    @CacheEvict(value = "pairings", allEntries = true)
     @Transactional
     public RoundPairingsResponse generateNextRound(UUID tournamentId) {
 
@@ -173,7 +156,7 @@ public class MatchmakingService {
                         "Round Robin pairings are generated all at once — all rounds already exist");
             }
             generateAllRoundRobinRounds(tournament, standings, engine);
-            return getRoundPairings(tournamentId, 1);
+            return roundPairingsCacheService.getRoundPairings(tournamentId, 1);
         }
 
         List<Pairing> pairings = engine.generatePairings(
@@ -231,9 +214,11 @@ public class MatchmakingService {
             gameRepository.save(game);
         }
 
-        return getRoundPairings(tournamentId, nextRoundNumber);
+        return roundPairingsCacheService.getRoundPairings(tournamentId, nextRoundNumber);
     }
 
+    @CacheEvict(value = "pairings", allEntries = true) // Optimization could be possible in future
+    // hint :- @CacheEvict(value = "pairings", key = "#tournamentId + '_' + #gameId") try to match the key
     @Transactional
     public void submitResult(UUID tournamentId, UUID gameId, GameResult result) {
         Users currentUser = getCurrentUser();

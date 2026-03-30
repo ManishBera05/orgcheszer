@@ -6,13 +6,14 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.io.Serializable;
 import java.util.UUID;
 
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class GamePairingDTO {
+public class GamePairingDTO implements Serializable {
 
     @Schema(description = "The unique ID of this match")
     private UUID gameId;
