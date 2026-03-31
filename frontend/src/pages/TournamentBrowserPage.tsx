@@ -1,15 +1,13 @@
-import { useState, useCallback, useEffect, useRef } from "react";
+// --- START OF FILE src/pages/TournamentBrowserPage.tsx ---
+import { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  SlidersHorizontal,
-  Search,
-  X,
-  ChevronDown,
   Radio,
   CalendarClock,
   ArchiveIcon,
   Loader2,
+  Search,
 } from "lucide-react";
 import {
   getTournamentsPaged,
@@ -48,200 +46,6 @@ const TABS: {
 ];
 
 const PAGE_SIZE = 9;
-
-/* ─── Filter state ────────────────────────────────────────── */
-interface Filters {
-  format: string;
-  type: string;
-  startDateFrom: string;
-  startDateTo: string;
-}
-
-const EMPTY_FILTERS: Filters = {
-  format: "",
-  type: "",
-  startDateFrom: "",
-  startDateTo: "",
-};
-
-/* ─── Select field ────────────────────────────────────────── */
-function FilterSelect({
-  label,
-  value,
-  onChange,
-  options,
-}: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  options: { value: string; label: string }[];
-}) {
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "0.3rem" }}>
-      <label
-        style={{
-          fontSize: "0.75rem",
-          fontWeight: 500,
-          color: "var(--text-muted)",
-          letterSpacing: "0.03em",
-          textTransform: "uppercase",
-        }}
-      >
-        {label}
-      </label>
-      <div style={{ position: "relative" }}>
-        <select
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          style={{
-            width: "100%",
-            padding: "0.5rem 2rem 0.5rem 0.75rem",
-            background: "var(--bg-base)",
-            border: `1px solid ${value ? "var(--accent-cta)" : "var(--border)"}`,
-            borderRadius: "6px",
-            color: value ? "var(--text-primary)" : "var(--text-muted)",
-            fontSize: "0.875rem",
-            fontFamily: "var(--font-sans)",
-            cursor: "pointer",
-            outline: "none",
-            appearance: "none",
-            WebkitAppearance: "none",
-            transition: "border-color 150ms ease",
-          }}
-          onFocus={(e) =>
-            (e.currentTarget.style.borderColor = "var(--accent-cta)")
-          }
-          onBlur={(e) =>
-            (e.currentTarget.style.borderColor = value
-              ? "var(--accent-cta)"
-              : "var(--border)")
-          }
-        >
-          <option value="">All</option>
-          {options.map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </select>
-        <ChevronDown
-          size={13}
-          style={{
-            position: "absolute",
-            right: "0.625rem",
-            top: "50%",
-            transform: "translateY(-50%)",
-            color: "var(--text-muted)",
-            pointerEvents: "none",
-          }}
-        />
-      </div>
-    </div>
-  );
-}
-
-/* ─── Date field ──────────────────────────────────────────── */
-function FilterDate({
-  label,
-  value,
-  onChange,
-}: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-}) {
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "0.3rem" }}>
-      <label
-        style={{
-          fontSize: "0.75rem",
-          fontWeight: 500,
-          color: "var(--text-muted)",
-          letterSpacing: "0.03em",
-          textTransform: "uppercase",
-        }}
-      >
-        {label}
-      </label>
-      <input
-        type="date"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        style={{
-          width: "100%",
-          padding: "0.5rem 0.75rem",
-          background: "var(--bg-base)",
-          border: `1px solid ${value ? "var(--accent-cta)" : "var(--border)"}`,
-          borderRadius: "6px",
-          color: value ? "var(--text-primary)" : "var(--text-muted)",
-          fontSize: "0.875rem",
-          fontFamily: "var(--font-sans)",
-          outline: "none",
-          transition: "border-color 150ms ease",
-          colorScheme: "dark",
-        }}
-        onFocus={(e) =>
-          (e.currentTarget.style.borderColor = "var(--accent-cta)")
-        }
-        onBlur={(e) =>
-          (e.currentTarget.style.borderColor = value
-            ? "var(--accent-cta)"
-            : "var(--border)")
-        }
-      />
-    </div>
-  );
-}
-
-/* ─── Active filter pill ──────────────────────────────────── */
-function FilterPill({
-  label,
-  onRemove,
-}: {
-  label: string;
-  onRemove: () => void;
-}) {
-  return (
-    <div
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: "0.3rem",
-        padding: "0.2rem 0.5rem 0.2rem 0.625rem",
-        background: "var(--accent-subtle)",
-        border: "1px solid var(--border)",
-        borderRadius: "99px",
-        fontSize: "0.75rem",
-        fontWeight: 500,
-        color: "var(--camel-400)",
-      }}
-    >
-      {label}
-      <button
-        onClick={onRemove}
-        style={{
-          display: "flex",
-          alignItems: "center",
-          background: "none",
-          border: "none",
-          cursor: "pointer",
-          color: "var(--text-muted)",
-          padding: "1px",
-          borderRadius: "50%",
-        }}
-        onMouseEnter={(e) =>
-          ((e.currentTarget as HTMLButtonElement).style.color = "var(--danger)")
-        }
-        onMouseLeave={(e) =>
-          ((e.currentTarget as HTMLButtonElement).style.color =
-            "var(--text-muted)")
-        }
-      >
-        <X size={11} />
-      </button>
-    </div>
-  );
-}
 
 /* ─── Skeleton grid ───────────────────────────────────────── */
 function SkeletonGrid({ count = 6 }: { count?: number }) {
@@ -298,7 +102,7 @@ function SkeletonGrid({ count = 6 }: { count?: number }) {
 }
 
 /* ─── Empty state ─────────────────────────────────────────── */
-function EmptyState({ tab, hasFilters }: { tab: TabKey; hasFilters: boolean }) {
+function EmptyState({ tab }: { tab: TabKey }) {
   const msgs: Record<TabKey, { icon: string; title: string; sub: string }> = {
     live: {
       icon: "⚡",
@@ -308,9 +112,7 @@ function EmptyState({ tab, hasFilters }: { tab: TabKey; hasFilters: boolean }) {
     upcoming: {
       icon: "📅",
       title: "No upcoming tournaments",
-      sub: hasFilters
-        ? "Try adjusting your filters."
-        : "Be the first to create one.",
+      sub: "Be the first to create one.",
     },
     past: {
       icon: "📚",
@@ -360,14 +162,11 @@ export default function TournamentBrowserPage() {
     ? (rawTab as TabKey)
     : "upcoming";
 
-  const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
-  const [pending, setPending] = useState<Filters>(EMPTY_FILTERS);
-  const [filtersOpen, setFiltersOpen] = useState(false);
   const [page, setPage] = useState(0);
   const [accumulated, setAccumulated] = useState<TournamentResponse[]>([]);
   const prevTabRef = useRef(activeTab);
 
-  // Reset accumulated list when tab or filters change
+  // Reset accumulated list when tab changes
   useEffect(() => {
     if (prevTabRef.current !== activeTab) {
       prevTabRef.current = activeTab;
@@ -382,38 +181,19 @@ export default function TournamentBrowserPage() {
     setAccumulated([]);
   }
 
-  function applyFilters() {
-    setFilters(pending);
-    setPage(0);
-    setAccumulated([]);
-    setFiltersOpen(false);
-  }
-
-  function clearFilters() {
-    setPending(EMPTY_FILTERS);
-    setFilters(EMPTY_FILTERS);
-    setPage(0);
-    setAccumulated([]);
-  }
-
   const currentTab = TABS.find((t) => t.key === activeTab)!;
-
   const isSingleStatus = currentTab.statuses.length === 1;
+
   const queryParams: TournamentFilterParams = {
     // Use statuses[] for multi-status tabs (Past = COMPLETED + CANCELLED)
-    // so the API layer fires parallel requests instead of sending an array param
     ...(isSingleStatus
       ? { status: currentTab.statuses[0] }
       : { statuses: currentTab.statuses }),
-    format: filters.format || undefined,
-    type: filters.type || undefined,
-    startDateFrom: filters.startDateFrom || undefined,
-    startDateTo: filters.startDateTo || undefined,
     page,
     size: PAGE_SIZE,
   };
 
-  const qKey = ["tournaments-browser", activeTab, filters, page];
+  const qKey = ["tournaments-browser", activeTab, page];
 
   const { data, isFetching, isLoading } = useQuery({
     queryKey: qKey,
@@ -429,38 +209,18 @@ export default function TournamentBrowserPage() {
     } else {
       setAccumulated((prev) => [...prev, ...data.content]);
     }
-  }, [data]);
+  }, [data, page]);
 
   // Prefetch next page
   useEffect(() => {
     if (data && !data.last) {
       queryClient.prefetchQuery({
-        queryKey: ["tournaments-browser", activeTab, filters, page + 1],
+        queryKey: ["tournaments-browser", activeTab, page + 1],
         queryFn: () => getTournamentsPaged({ ...queryParams, page: page + 1 }),
         staleTime: 30_000,
       });
     }
-  }, [data, page]);
-
-  const hasFilters = Object.values(filters).some(Boolean);
-  const activeFilterCount = Object.values(filters).filter(Boolean).length;
-
-  // Build active pill labels
-  const activePills: { label: string; key: keyof Filters }[] = [
-    filters.format && {
-      label: `Format: ${filters.format}`,
-      key: "format" as const,
-    },
-    filters.type && { label: `Type: ${filters.type}`, key: "type" as const },
-    filters.startDateFrom && {
-      label: `From: ${filters.startDateFrom}`,
-      key: "startDateFrom" as const,
-    },
-    filters.startDateTo && {
-      label: `To: ${filters.startDateTo}`,
-      key: "startDateTo" as const,
-    },
-  ].filter(Boolean) as { label: string; key: keyof Filters }[];
+  }, [data, page, queryClient]);
 
   return (
     <>
@@ -516,93 +276,6 @@ export default function TournamentBrowserPage() {
         }
         @keyframes tc-pulse { 0%,100%{opacity:1}50%{opacity:0.35} }
 
-        /* Filter bar */
-        .tb-toolbar {
-          display: flex;
-          align-items: center;
-          gap: 0.75rem;
-          flex-wrap: wrap;
-          margin-top: 1.5rem;
-        }
-        .tb-filter-btn {
-          display: flex;
-          align-items: center;
-          gap: 0.4rem;
-          padding: 0.5rem 0.875rem;
-          border-radius: 6px;
-          font-size: 0.875rem;
-          font-weight: 500;
-          font-family: var(--font-sans);
-          border: 1px solid var(--border);
-          background: var(--bg-surface);
-          color: var(--text-secondary);
-          cursor: pointer;
-          transition: border-color 150ms ease, color 150ms ease;
-          white-space: nowrap;
-        }
-        .tb-filter-btn:hover { border-color: var(--border-strong); color: var(--text-primary); }
-        .tb-filter-btn.active { border-color: var(--accent-cta); color: var(--accent-cta); background: var(--accent-subtle); }
-        .tb-filter-badge {
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          width: 16px; height: 16px;
-          border-radius: 50%;
-          background: var(--accent-cta);
-          color: var(--text-on-accent);
-          font-size: 0.625rem;
-          font-weight: 700;
-          line-height: 1;
-        }
-
-        /* Filter panel */
-        .tb-filter-panel {
-          margin-top: 0.75rem;
-          background: var(--bg-surface);
-          border: 1px solid var(--border);
-          border-radius: 12px;
-          padding: 1.25rem;
-          animation: tb-fadeIn 180ms ease forwards;
-        }
-        .tb-filter-grid {
-          display: grid;
-          grid-template-columns: repeat(4, 1fr);
-          gap: 1rem;
-          margin-bottom: 1rem;
-        }
-        .tb-filter-actions {
-          display: flex;
-          justify-content: flex-end;
-          gap: 0.625rem;
-          padding-top: 0.875rem;
-          border-top: 1px solid var(--border-subtle);
-        }
-        .tb-btn-ghost {
-          padding: 0.45rem 0.875rem;
-          border: 1px solid var(--border);
-          border-radius: 6px;
-          background: transparent;
-          color: var(--text-secondary);
-          font-size: 0.875rem;
-          font-family: var(--font-sans);
-          cursor: pointer;
-          transition: border-color 150ms ease, color 150ms ease;
-        }
-        .tb-btn-ghost:hover { border-color: var(--border-strong); color: var(--text-primary); }
-        .tb-btn-apply {
-          padding: 0.45rem 1rem;
-          border: none;
-          border-radius: 6px;
-          background: var(--accent-cta);
-          color: var(--text-on-accent);
-          font-size: 0.875rem;
-          font-weight: 600;
-          font-family: var(--font-sans);
-          cursor: pointer;
-          transition: background 150ms ease;
-        }
-        .tb-btn-apply:hover { background: var(--accent-hover); }
-
         /* Results bar */
         .tb-results-bar {
           display: flex;
@@ -610,13 +283,7 @@ export default function TournamentBrowserPage() {
           justify-content: space-between;
           gap: 0.75rem;
           flex-wrap: wrap;
-          margin: 1.25rem 0 1.5rem;
-        }
-        .tb-pills {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 0.4rem;
-          align-items: center;
+          margin: 1.5rem 0;
         }
 
         /* Grid */
@@ -656,14 +323,12 @@ export default function TournamentBrowserPage() {
 
         /* Responsive */
         @media (max-width: 960px) {
-          .tb-filter-grid { grid-template-columns: repeat(2, 1fr); }
           .tb-grid { grid-template-columns: repeat(2, 1fr); }
         }
         @media (max-width: 640px) {
           .tb-page { padding: 1.5rem 1rem 3rem; }
           .tb-tabs { width: 100%; }
           .tb-tab  { flex: 1; justify-content: center; padding: 0.5rem 0.5rem; font-size: 0.8125rem; }
-          .tb-filter-grid { grid-template-columns: 1fr; }
           .tb-grid { grid-template-columns: 1fr; }
           .tb-results-bar { flex-direction: column; align-items: flex-start; }
         }
@@ -704,126 +369,15 @@ export default function TournamentBrowserPage() {
           ))}
         </div>
 
-        {/* ── Toolbar ── */}
-        <div className="tb-toolbar">
-          <button
-            className={`tb-filter-btn${filtersOpen || hasFilters ? " active" : ""}`}
-            onClick={() => setFiltersOpen((o) => !o)}
-          >
-            <SlidersHorizontal size={14} />
-            Filters
-            {activeFilterCount > 0 && (
-              <span className="tb-filter-badge">{activeFilterCount}</span>
-            )}
-          </button>
-
-          {hasFilters && (
-            <button
-              className="tb-filter-btn"
-              onClick={clearFilters}
-              style={{
-                color: "var(--danger)",
-                borderColor: "rgba(211,77,75,0.3)",
-              }}
-            >
-              <X size={13} />
-              Clear all
-            </button>
-          )}
-        </div>
-
-        {/* ── Filter panel ── */}
-        {filtersOpen && (
-          <div className="tb-filter-panel">
-            <div className="tb-filter-grid">
-              <FilterSelect
-                label="Format"
-                value={pending.format}
-                onChange={(v) => setPending((f) => ({ ...f, format: v }))}
-                options={[
-                  { value: "SWISS", label: "Swiss" },
-                  { value: "ROUND_ROBIN", label: "Round Robin" },
-                ]}
-              />
-              {/* TODO: wire to backend 'type' param once implemented */}
-              <FilterSelect
-                label="Type"
-                value={pending.type}
-                onChange={(v) => setPending((f) => ({ ...f, type: v }))}
-                options={[
-                  { value: "BLITZ", label: "Blitz" },
-                  { value: "RAPID", label: "Rapid" },
-                  { value: "CLASSICAL", label: "Classical" },
-                ]}
-              />
-              <FilterDate
-                label="Start date from"
-                value={pending.startDateFrom}
-                onChange={(v) =>
-                  setPending((f) => ({ ...f, startDateFrom: v }))
-                }
-              />
-              <FilterDate
-                label="Start date to"
-                value={pending.startDateTo}
-                onChange={(v) => setPending((f) => ({ ...f, startDateTo: v }))}
-              />
-            </div>
-            <div className="tb-filter-actions">
-              <button
-                className="tb-btn-ghost"
-                onClick={() => {
-                  setPending(EMPTY_FILTERS);
-                }}
-              >
-                Reset
-              </button>
-              <button className="tb-btn-apply" onClick={applyFilters}>
-                Apply filters
-              </button>
-            </div>
-          </div>
-        )}
-
         {/* ── Results bar ── */}
         <div className="tb-results-bar">
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "0.625rem",
-              flexWrap: "wrap",
-            }}
-          >
-            {/* Count */}
-            {!isLoading && data && (
-              <span
-                style={{ fontSize: "0.875rem", color: "var(--text-muted)" }}
-              >
-                {data.totalElements === 0
-                  ? "No tournaments found"
-                  : `${accumulated.length} of ${data.totalElements} tournament${data.totalElements !== 1 ? "s" : ""}`}
-              </span>
-            )}
-            {/* Active filter pills */}
-            {activePills.length > 0 && (
-              <div className="tb-pills">
-                {activePills.map((p) => (
-                  <FilterPill
-                    key={p.key}
-                    label={p.label}
-                    onRemove={() => {
-                      const next = { ...filters, [p.key]: "" };
-                      setFilters(next);
-                      setPending(next);
-                      setPage(0);
-                      setAccumulated([]);
-                    }}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
+          {!isLoading && data && (
+            <span style={{ fontSize: "0.875rem", color: "var(--text-muted)" }}>
+              {data.totalElements === 0
+                ? "No tournaments found"
+                : `${accumulated.length} of ${data.totalElements} tournament${data.totalElements !== 1 ? "s" : ""}`}
+            </span>
+          )}
 
           {/* Live indicator */}
           {activeTab === "live" && (
@@ -859,7 +413,7 @@ export default function TournamentBrowserPage() {
           <>
             <div className="tb-grid">
               {accumulated.length === 0 ? (
-                <EmptyState tab={activeTab} hasFilters={hasFilters} />
+                <EmptyState tab={activeTab} />
               ) : (
                 accumulated.map((t, i) => (
                   <TournamentCard
@@ -908,3 +462,4 @@ export default function TournamentBrowserPage() {
     </>
   );
 }
+// --- END OF FILE src/pages/TournamentBrowserPage.tsx ---

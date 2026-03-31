@@ -110,7 +110,7 @@ function RoundStatusBadge({ status }: { status?: string }) {
 }
 
 function PairingRow({ game }: { game: GamePairingDTO }) {
-  const isBye = game.result === "BYE";
+  const isBye = game.result === "BYE" || game.blackName === "BYE";
   const isSettled = game.result !== "PENDING";
 
   return (
@@ -239,7 +239,7 @@ function PairingRow({ game }: { game: GamePairingDTO }) {
 
 export default function RoundPairingsPage() {
   const { tournamentId } = useParams<{ tournamentId: string }>();
-  const [selectedRound, setSelectedRound] = useState<number | null>(null);
+  const [currentRound, setCurrentRound] = useState<number | null>(null);
 
   const { data: tournament, isLoading: tLoading } = useQuery({
     queryKey: ["tournament", tournamentId],
@@ -249,16 +249,15 @@ export default function RoundPairingsPage() {
 
   const latestRound = tournament?.currentRound || 0;
 
-  // Initialize default view to the latest generated round
   useEffect(() => {
-    if (tournament && selectedRound === null) {
-      setSelectedRound(Math.max(1, latestRound));
+    if (tournament && currentRound === null) {
+      setCurrentRound(Math.max(1, latestRound));
     }
-  }, [tournament, selectedRound, latestRound]);
+  }, [tournament, currentRound, latestRound]);
 
-  const round = selectedRound ?? 1;
+  const round = currentRound ?? 1;
 
-  // ONLY fetch pairings if the round has actually been generated
+  // ONLY fetch pairings for the exact round the user is looking at
   const { data: pairings, isLoading: pLoading } = useQuery({
     queryKey: ["pairings", tournamentId, round],
     queryFn: () => getRoundPairings(tournamentId!, round),
@@ -275,15 +274,15 @@ export default function RoundPairingsPage() {
   const sorted = [...(pairings?.pairings ?? [])].sort(
     (a, b) => a.boardNumber - b.boardNumber,
   );
+  // const hasPairings = pairings && pairings.pairings.length > 0;
 
   const canGoNext = round < latestRound;
   const canGoPrev = round > 1;
 
-  const isLoading =
-    tLoading || selectedRound === null || (pLoading && round <= latestRound);
-  const isNotGenerated = round > latestRound;
+  const isLoading = tLoading || currentRound === null || pLoading;
+  const isNotGenerated = round > latestRound || latestRound === 0;
 
-  if (tLoading || selectedRound === null)
+  if (tLoading || currentRound === null)
     return (
       <div style={{ textAlign: "center", padding: "5rem" }}>
         <Loader2
@@ -391,7 +390,7 @@ export default function RoundPairingsPage() {
           <button
             className="rp-nav-btn"
             disabled={!canGoPrev}
-            onClick={() => setSelectedRound((r) => r! - 1)}
+            onClick={() => setCurrentRound((r) => r! - 1)}
           >
             <ChevronLeft size={15} />
             <span className="nav-label">Prev</span>
@@ -410,7 +409,7 @@ export default function RoundPairingsPage() {
           <button
             className="rp-nav-btn"
             disabled={!canGoNext}
-            onClick={() => setSelectedRound((r) => r! + 1)}
+            onClick={() => setCurrentRound((r) => r! + 1)}
           >
             <span className="nav-label">Next</span>
             <ChevronRight size={15} />
@@ -454,7 +453,6 @@ export default function RoundPairingsPage() {
             </div>
           ) : (
             <>
-              {/* Header row for stats */}
               <div
                 style={{
                   padding: "1rem",

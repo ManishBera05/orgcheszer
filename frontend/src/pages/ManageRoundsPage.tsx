@@ -20,6 +20,7 @@ import {
   Search,
   Camera,
   X,
+  Copy,
 } from "lucide-react";
 import {
   getTournament,
@@ -71,6 +72,7 @@ function GameRow({
   const isBye = game.result === "BYE" || game.blackName === "BYE";
   const isSettled = isLocked || isBye;
 
+  // FIX: Close dropdown if clicked outside
   useEffect(() => {
     const h = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node))
@@ -79,6 +81,12 @@ function GameRow({
     document.addEventListener("mousedown", h);
     return () => document.removeEventListener("mousedown", h);
   }, []);
+
+  // FIX: Keep the local dropdown state in sync with the server data.
+  // If another user updates this board, the UI will instantly switch from "Select result" to the actual winner.
+  useEffect(() => {
+    setSelected(game.result !== "PENDING" ? game.result : "");
+  }, [game.result]);
 
   const mutation = useMutation({
     mutationFn: (result: GameResult) =>
@@ -89,9 +97,6 @@ function GameRow({
       setOpen(false);
       queryClient.invalidateQueries({
         queryKey: ["pairings", tournamentId, roundNumber],
-      });
-      queryClient.invalidateQueries({
-        queryKey: ["latest-pairings", tournamentId],
       });
     },
     onError: (err: ApiError) =>
@@ -124,6 +129,7 @@ function GameRow({
         >
           {game.boardNumber}
         </span>
+
         <Link
           to={`/users/${game.whiteId || game.whiteName}`}
           style={{
@@ -146,6 +152,7 @@ function GameRow({
         >
           {game.whiteName}
         </Link>
+
         <span
           style={{
             fontSize: "0.75rem",
@@ -178,6 +185,7 @@ function GameRow({
         >
           B
         </span>
+
         {isBye ? (
           <em style={{ color: "var(--text-muted)", flex: 1 }}>BYE</em>
         ) : (
@@ -274,6 +282,7 @@ function GameRow({
               <button
                 key={o.value}
                 onClick={() => {
+                  setOpen(false);
                   mutation.mutate(o.value);
                 }}
                 style={{
@@ -659,8 +668,13 @@ function KeysManager({ tournamentId }: { tournamentId: string }) {
       toast.success("Keys generated!");
       queryClient.invalidateQueries({ queryKey: ["staff-keys"] });
     },
-    onError: (e: ApiError) => toast.error(e.message),
+    onError: (e: any) => toast.error(e.message),
   });
+
+  const handleCopy = (keyValue: string) => {
+    navigator.clipboard.writeText(keyValue);
+    toast.success("Key copied to clipboard!");
+  };
 
   if (kLoad || sLoad)
     return <Loader2 size={20} className="animate-spin text-muted" />;
@@ -729,15 +743,40 @@ function KeysManager({ tournamentId }: { tournamentId: string }) {
               style={{
                 display: "flex",
                 justifyContent: "space-between",
+                alignItems: "center",
                 padding: "0.75rem",
                 background: "var(--bg-surface)",
                 border: "1px solid var(--border)",
                 borderRadius: "6px",
               }}
             >
-              <code style={{ color: "var(--camel-400)", fontWeight: 600 }}>
-                {k.keyValue}
-              </code>
+              <div
+                style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
+              >
+                <code style={{ color: "var(--camel-400)", fontWeight: 600 }}>
+                  {k.keyValue}
+                </code>
+                <button
+                  onClick={() => handleCopy(k.keyValue)}
+                  title="Copy Key"
+                  style={{
+                    background: "none",
+                    border: "none",
+                    color: "var(--text-muted)",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                  }}
+                  onMouseEnter={(e) =>
+                    (e.currentTarget.style.color = "var(--text-primary)")
+                  }
+                  onMouseLeave={(e) =>
+                    (e.currentTarget.style.color = "var(--text-muted)")
+                  }
+                >
+                  <Copy size={14} />
+                </button>
+              </div>
               <span
                 style={{
                   fontSize: "0.75rem",
@@ -842,25 +881,17 @@ export default function ManageRoundsPage() {
   const latestRound = tournament?.currentRound || 0;
 
   useEffect(() => {
-    if (currentRound === null && tournament) {
+    if (tournament && currentRound === null) {
       setCurrentRound(latestRound > 0 ? latestRound : 1);
     }
   }, [tournament, currentRound, latestRound]);
 
   const round = currentRound ?? 1;
 
-  // 1. Fetch pairings for the CURRENTLY VIEWED round
   const { data: activePairings, isLoading: isRoundLoading } = useQuery({
     queryKey: ["pairings", tournamentId, round],
     queryFn: () => getRoundPairings(tournamentId!, round),
     enabled: !!tournamentId && round <= latestRound && latestRound > 0,
-  });
-
-  // 2. Fetch pairings for the LATEST round (Needed strictly to validate the Generate button)
-  const { data: latestPairings } = useQuery({
-    queryKey: ["latest-pairings", tournamentId, latestRound],
-    queryFn: () => getRoundPairings(tournamentId!, latestRound),
-    enabled: !!tournamentId && latestRound > 0 && round !== latestRound,
   });
 
   const generateMut = useMutation({
@@ -902,29 +933,26 @@ export default function ManageRoundsPage() {
   const settledGames =
     activePairings?.pairings.filter((g) => g.result !== "PENDING") ?? [];
   const hasPairings = activePairings && activePairings.pairings.length > 0;
-  const isNotGenerated = round > latestRound || latestRound === 0;
 
   const canGoPrev = round > 1;
-  const canGoNext = round < latestRound;
-
-  const targetPairings =
-    round === latestRound ? activePairings : latestPairings;
-  const latestRoundPending =
-    targetPairings?.pairings.filter((g) => g.result === "PENDING").length || 0;
+  const canGoNext = round < tournament.numberOfRounds;
 
   const canGenerate =
     latestRound === 0 ||
-    (latestRoundPending === 0 && latestRound < tournament.numberOfRounds);
+    (pendingGames.length === 0 &&
+      latestRound < tournament.numberOfRounds &&
+      round === latestRound);
   const canEndTournament =
     latestRound > 0 &&
-    latestRoundPending === 0 &&
+    pendingGames.length === 0 &&
     tournament.status !== "COMPLETED" &&
     tournament.status !== "CANCELLED";
 
+  // ROUND ROBIN FIX: Do not lock old rounds if the format is ROUND_ROBIN. Only lock if tournament is over.
   const isRoundLocked =
-    round < latestRound ||
     tournament.status === "COMPLETED" ||
-    tournament.status === "CANCELLED";
+    tournament.status === "CANCELLED" ||
+    (tournament.format !== "ROUND_ROBIN" && round < latestRound);
 
   return (
     <>
@@ -1151,21 +1179,23 @@ export default function ManageRoundsPage() {
               </button>
             </div>
 
-            {isRoundLocked && (
-              <p
-                style={{
-                  fontSize: "0.8125rem",
-                  color: "var(--warning)",
-                  marginBottom: "1rem",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "0.5rem",
-                }}
-              >
-                <CheckCircle2 size={14} /> Results for this round are locked
-                because a newer round exists or the tournament ended.
-              </p>
-            )}
+            {isRoundLocked &&
+              tournament.format !== "ROUND_ROBIN" &&
+              round < latestRound && (
+                <p
+                  style={{
+                    fontSize: "0.8125rem",
+                    color: "var(--warning)",
+                    marginBottom: "1rem",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "0.5rem",
+                  }}
+                >
+                  <CheckCircle2 size={14} /> Results for this round are locked
+                  because a newer round exists.
+                </p>
+              )}
 
             <div
               style={{
@@ -1182,7 +1212,7 @@ export default function ManageRoundsPage() {
                     style={{ margin: "0 auto" }}
                   />
                 </div>
-              ) : isNotGenerated ? (
+              ) : !hasPairings ? (
                 <div style={{ padding: "5rem 1.5rem", textAlign: "center" }}>
                   <Swords
                     size={32}

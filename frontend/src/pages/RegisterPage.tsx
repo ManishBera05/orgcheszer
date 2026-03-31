@@ -1,3 +1,4 @@
+// --- START OF FILE src/pages/RegisterPage.tsx ---
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useMutation } from "@tanstack/react-query";
@@ -9,12 +10,12 @@ import {
   ChevronRight,
   ChevronLeft,
   Check,
+  KeyRound,
 } from "lucide-react";
-import { register } from "../api/auth";
+import { initiateRegistration, verifyRegistration } from "../api/auth";
 import { useAuth } from "../hooks/useAuth";
 import type { ApiError } from "../types";
 
-/* ─── Field ───────────────────────────────────────────────── */
 interface FieldProps {
   label: string;
   id: string;
@@ -27,6 +28,8 @@ interface FieldProps {
   error?: string;
   hint?: string;
   rightSlot?: React.ReactNode;
+  maxLength?: number;
+  styleOverrides?: React.CSSProperties;
 }
 
 function Field({
@@ -41,6 +44,8 @@ function Field({
   error,
   hint,
   rightSlot,
+  maxLength,
+  styleOverrides,
 }: FieldProps) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "0.375rem" }}>
@@ -79,6 +84,7 @@ function Field({
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
           autoComplete={autoComplete}
+          maxLength={maxLength}
           style={{
             width: "100%",
             padding: "0.75rem 0.875rem",
@@ -90,8 +96,8 @@ function Field({
             fontSize: "1rem",
             fontFamily: "var(--font-sans)",
             outline: "none",
-            transition:
-              "border-color var(--transition-fast), box-shadow var(--transition-fast)",
+            transition: "border-color 150ms ease, box-shadow 150ms ease",
+            ...styleOverrides,
           }}
           onFocus={(e) => {
             e.currentTarget.style.borderColor = "var(--accent-cta)";
@@ -133,7 +139,6 @@ function Field({
   );
 }
 
-/* ─── Form state ─────────────────────────────────────────── */
 interface FormState {
   firstName: string;
   lastName: string;
@@ -143,6 +148,7 @@ interface FormState {
   mobileNo: string;
   dob: string;
   fideId: string;
+  otp: string;
 }
 type Errors = Partial<Record<keyof FormState, string>>;
 const EMPTY: FormState = {
@@ -154,9 +160,9 @@ const EMPTY: FormState = {
   mobileNo: "",
   dob: "",
   fideId: "",
+  otp: "",
 };
 
-/* ─── RegisterPage ────────────────────────────────────────── */
 export default function RegisterPage() {
   const { login: authLogin } = useAuth();
   const [step, setStep] = useState(0);
@@ -196,44 +202,70 @@ export default function RegisterPage() {
       if (form.fideId && !/^\d+$/.test(form.fideId))
         next.fideId = "FIDE ID should be numeric.";
     }
+    if (s === 3) {
+      if (!form.otp.trim()) next.otp = "OTP is required.";
+      else if (!/^\d{6}$/.test(form.otp.trim()))
+        next.otp = "OTP must be exactly 6 digits.";
+    }
     setErrors(next);
     return Object.keys(next).length === 0;
   }
 
+  const initiateMut = useMutation({
+    mutationFn: initiateRegistration,
+    onSuccess: (data) => {
+      toast.success(data.message || "OTP sent to your email!");
+      setStep(3); // Advance to OTP step
+    },
+    onError: (err: ApiError) =>
+      toast.error(err.message || "Failed to initiate registration."),
+  });
+
+  const verifyMut = useMutation({
+    mutationFn: verifyRegistration,
+    onSuccess: (data) => {
+      toast.success("Account created successfully! Welcome.");
+      authLogin(data.token, "/");
+    },
+    onError: (err: ApiError) =>
+      toast.error(err.message || "Invalid or expired OTP."),
+  });
+
   function next() {
-    if (validateStep(step)) setStep((s) => s + 1);
+    if (validateStep(step)) {
+      if (step === 2) {
+        // Submit profile data to get OTP
+        initiateMut.mutate({
+          firstName: form.firstName.trim(),
+          lastName: form.lastName.trim(),
+          email: form.email.trim(),
+          password: form.password,
+          mobileNo: form.mobileNo.trim(),
+          dob: form.dob,
+          fideId: form.fideId.trim() || undefined,
+        });
+      } else {
+        setStep((s) => s + 1);
+      }
+    }
   }
+
   function back() {
     setStep((s) => s - 1);
   }
 
-  const mutation = useMutation({
-    mutationFn: register,
-    onSuccess: (data) => {
-      toast.success(data.message || "Account created! Welcome to OrgCheszer.");
-      authLogin(data.token, "/");
-    },
-    onError: (err: ApiError) => {
-      toast.error(err.message || "Registration failed. Please try again.");
-      setStep(0);
-    },
-  });
-
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!validateStep(2)) return;
-    mutation.mutate({
-      firstName: form.firstName.trim(),
-      lastName: form.lastName.trim(),
-      email: form.email.trim(),
-      password: form.password,
-      mobileNo: form.mobileNo.trim(),
-      dob: form.dob,
-      fideId: form.fideId.trim() || undefined,
-    });
+    if (step === 3 && validateStep(3)) {
+      // Submit OTP to finalize
+      verifyMut.mutate({ email: form.email.trim(), otp: form.otp.trim() });
+    } else {
+      next();
+    }
   }
 
-  const steps = ["Account", "Password", "Profile"];
+  // Added "Verify" to the progression steps
+  const steps = ["Account", "Password", "Profile", "Verify"];
 
   const pwToggleBtn = (show: boolean, toggle: () => void) => (
     <button
@@ -365,6 +397,69 @@ export default function RegisterPage() {
         error={errors.fideId}
       />
     </div>,
+
+    // NEW STEP 3: OTP Verification
+    <div
+      key="s3"
+      style={{ display: "flex", flexDirection: "column", gap: "1.125rem" }}
+    >
+      <div
+        style={{
+          padding: "1rem",
+          background: "var(--accent-subtle)",
+          border: "1px solid var(--border)",
+          borderRadius: "8px",
+          display: "flex",
+          gap: "0.75rem",
+        }}
+      >
+        <KeyRound
+          size={20}
+          style={{
+            color: "var(--accent-cta)",
+            flexShrink: 0,
+            marginTop: "2px",
+          }}
+        />
+        <div>
+          <h4
+            style={{
+              margin: "0 0 0.25rem",
+              color: "var(--text-primary)",
+              fontSize: "0.9375rem",
+            }}
+          >
+            Check your email
+          </h4>
+          <p
+            style={{
+              margin: 0,
+              color: "var(--text-muted)",
+              fontSize: "0.8125rem",
+            }}
+          >
+            We sent a 6-digit code to <strong>{form.email}</strong>. Enter it
+            below to verify your account.
+          </p>
+        </div>
+      </div>
+      <Field
+        label="6-Digit OTP"
+        id="otp"
+        value={form.otp}
+        onChange={set("otp")}
+        placeholder="123456"
+        maxLength={6}
+        required
+        error={errors.otp}
+        styleOverrides={{
+          textAlign: "center",
+          letterSpacing: "0.5em",
+          fontSize: "1.25rem",
+          fontWeight: 600,
+        }}
+      />
+    </div>,
   ];
 
   return (
@@ -374,101 +469,27 @@ export default function RegisterPage() {
         @keyframes stepIn       { from { opacity:0; transform:translateX(16px); } to { opacity:1; transform:translateX(0); } }
         @keyframes spin         { to { transform:rotate(360deg); } }
 
-        .reg-outer {
-          min-height: calc(100vh - 64px);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          padding: 3rem 1.5rem;
-          box-sizing: border-box;
-        }
-        .reg-card {
-          position: relative;
-          width: 100%;
-          max-width: 480px;
-          background: var(--bg-surface);
-          border: 1px solid var(--border);
-          border-radius: 16px;
-          padding: 2.5rem;
-          box-shadow: var(--shadow-lg);
-          animation: panelSlideIn 400ms ease forwards;
-          box-sizing: border-box;
-        }
-        .reg-name-row {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 1rem;
-        }
-        .reg-nav {
-          display: flex;
-          gap: 0.75rem;
-          margin-top: 2rem;
-        }
-        .reg-btn-back {
-          flex: 0 0 auto;
-          padding: 0.75rem 1rem;
-          background: transparent;
-          border: 1px solid var(--border);
-          border-radius: var(--radius-md);
-          color: var(--text-secondary);
-          font-size: 1rem;
-          font-family: var(--font-sans);
-          cursor: pointer;
-          display: flex;
-          align-items: center;
-          gap: 0.375rem;
-          transition: border-color var(--transition-fast), color var(--transition-fast);
-          min-height: 48px;
-        }
-        .reg-btn-back:hover {
-          border-color: var(--border-strong);
-          color: var(--text-primary);
-        }
-        .reg-btn-primary {
-          flex: 1;
-          padding: 0.75rem 1rem;
-          background: var(--accent-cta);
-          border: none;
-          border-radius: var(--radius-md);
-          color: var(--text-on-accent);
-          font-size: 1rem;
-          font-weight: 600;
-          font-family: var(--font-sans);
-          cursor: pointer;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 0.5rem;
-          transition: background var(--transition-fast);
-          min-height: 48px;
-        }
+        .reg-outer { min-height: calc(100vh - 64px); display: flex; align-items: center; justify-content: center; padding: 3rem 1.5rem; box-sizing: border-box; }
+        .reg-card { position: relative; width: 100%; max-width: 480px; background: var(--bg-surface); border: 1px solid var(--border); border-radius: 16px; padding: 2.5rem; box-shadow: var(--shadow-lg); animation: panelSlideIn 400ms ease forwards; box-sizing: border-box; }
+        .reg-name-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+        .reg-nav { display: flex; gap: 0.75rem; margin-top: 2rem; }
+        .reg-btn-back { flex: 0 0 auto; padding: 0.75rem 1rem; background: transparent; border: 1px solid var(--border); border-radius: var(--radius-md); color: var(--text-secondary); font-size: 1rem; font-family: var(--font-sans); cursor: pointer; display: flex; align-items: center; gap: 0.375rem; transition: border-color var(--transition-fast), color var(--transition-fast); min-height: 48px; }
+        .reg-btn-back:hover { border-color: var(--border-strong); color: var(--text-primary); }
+        .reg-btn-primary { flex: 1; padding: 0.75rem 1rem; background: var(--accent-cta); border: none; border-radius: var(--radius-md); color: var(--text-on-accent); font-size: 1rem; font-weight: 600; font-family: var(--font-sans); cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.5rem; transition: background var(--transition-fast); min-height: 48px; }
         .reg-btn-primary:hover  { background: var(--accent-hover); }
         .reg-btn-primary:disabled { background: var(--border); color: var(--text-muted); cursor: not-allowed; }
 
-        /* Mobile */
         @media (max-width: 520px) {
-          .reg-outer {
-            align-items: flex-start;
-            padding: 1.5rem 1rem 3rem;
-          }
-          .reg-card {
-            padding: 1.75rem 1.25rem;
-            border-radius: 12px;
-            max-width: 100%;
-          }
-          .reg-name-row {
-            grid-template-columns: 1fr;
-            gap: 1.125rem;
-          }
+          .reg-outer { align-items: flex-start; padding: 1.5rem 1rem 3rem; }
+          .reg-card { padding: 1.75rem 1.25rem; border-radius: 12px; max-width: 100%; }
+          .reg-name-row { grid-template-columns: 1fr; gap: 1.125rem; }
         }
-
         @media (max-width: 380px) {
           .reg-outer  { padding: 1rem 0.75rem 2.5rem; }
           .reg-card   { padding: 1.5rem 1rem; }
         }
       `}</style>
 
-      {/* Ambient glow */}
       <div
         style={{
           position: "fixed",
@@ -486,7 +507,6 @@ export default function RegisterPage() {
 
       <div className="reg-outer">
         <div className="reg-card" style={{ zIndex: 1 }}>
-          {/* Header */}
           <div
             style={{
               display: "flex",
@@ -517,7 +537,6 @@ export default function RegisterPage() {
             Join OrgCheszer and start organising
           </p>
 
-          {/* Step indicator */}
           <div style={{ display: "flex", gap: 0, marginBottom: "0.5rem" }}>
             {steps.map((s, i) => (
               <div
@@ -606,32 +625,30 @@ export default function RegisterPage() {
             }}
           />
 
-          {/* Step content */}
           <div key={step} style={{ animation: "stepIn 250ms ease forwards" }}>
             {stepContent[step]}
           </div>
 
-          {/* Navigation */}
           <div className="reg-nav">
             {step > 0 && (
-              <button type="button" className="reg-btn-back" onClick={back}>
-                <ChevronLeft size={16} />
-                Back
+              <button
+                type="button"
+                className="reg-btn-back"
+                onClick={back}
+                disabled={initiateMut.isPending || verifyMut.isPending}
+              >
+                <ChevronLeft size={16} /> Back
               </button>
             )}
+
             {step < steps.length - 1 ? (
-              <button type="button" className="reg-btn-primary" onClick={next}>
-                Continue
-                <ChevronRight size={16} />
-              </button>
-            ) : (
               <button
                 type="button"
                 className="reg-btn-primary"
-                disabled={mutation.isPending}
-                onClick={handleSubmit as unknown as React.MouseEventHandler}
+                onClick={next}
+                disabled={initiateMut.isPending}
               >
-                {mutation.isPending ? (
+                {initiateMut.isPending ? (
                   <>
                     <span
                       style={{
@@ -643,13 +660,40 @@ export default function RegisterPage() {
                         animation: "spin 0.7s linear infinite",
                         display: "inline-block",
                       }}
-                    />
-                    Creating account…
+                    />{" "}
+                    Sending OTP…
                   </>
                 ) : (
                   <>
-                    <UserPlus size={16} />
-                    Create account
+                    Continue <ChevronRight size={16} />
+                  </>
+                )}
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="reg-btn-primary"
+                disabled={verifyMut.isPending}
+                onClick={handleSubmit as unknown as React.MouseEventHandler}
+              >
+                {verifyMut.isPending ? (
+                  <>
+                    <span
+                      style={{
+                        width: "16px",
+                        height: "16px",
+                        border: "2px solid rgba(255,255,255,0.3)",
+                        borderTopColor: "var(--text-on-accent)",
+                        borderRadius: "50%",
+                        animation: "spin 0.7s linear infinite",
+                        display: "inline-block",
+                      }}
+                    />{" "}
+                    Verifying…
+                  </>
+                ) : (
+                  <>
+                    <UserPlus size={16} /> Create account
                   </>
                 )}
               </button>
@@ -677,3 +721,4 @@ export default function RegisterPage() {
     </>
   );
 }
+// --- END OF FILE src/pages/RegisterPage.tsx ---

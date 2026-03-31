@@ -10,7 +10,6 @@ import {
   Clock,
   Users,
   Hash,
-  Phone,
   UserCircle,
   Trophy,
   BarChart2,

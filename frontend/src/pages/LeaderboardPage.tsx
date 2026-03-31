@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, BarChart2, RefreshCw, Loader2 } from "lucide-react";
+import { ArrowLeft, BarChart2, Loader2 } from "lucide-react";
 import { getLeaderboard } from "../api/matchmaking";
 import { getTournament } from "../api/tournaments";
 import { formatScore } from "../lib/utils";
@@ -164,7 +164,7 @@ export default function LeaderboardPage() {
     staleTime: 60_000,
   });
 
-  const { data, isLoading, isFetching, refetch } = useQuery({
+  const { data, isLoading, isFetching } = useQuery({
     queryKey: ["leaderboard", tournamentId, page],
     queryFn: () => getLeaderboard(tournamentId!, page, PAGE_SIZE),
     enabled: !!tournamentId,
@@ -313,34 +313,6 @@ export default function LeaderboardPage() {
               </p>
             )}
           </div>
-          <button
-            onClick={() => {
-              setPage(0);
-              setRows([]);
-              setTimeout(() => refetch(), 50);
-            }}
-            disabled={isFetching}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "0.375rem",
-              padding: "0.5rem 0.875rem",
-              border: "1px solid var(--border)",
-              borderRadius: "8px",
-              background: "transparent",
-              color: "var(--text-muted)",
-              fontSize: "0.875rem",
-              cursor: "pointer",
-            }}
-          >
-            <RefreshCw
-              size={14}
-              style={{
-                animation: isFetching ? "spin 0.7s linear infinite" : "none",
-              }}
-            />{" "}
-            Refresh
-          </button>
         </div>
 
         <div className="lb-wrap">

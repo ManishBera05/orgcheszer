@@ -5,7 +5,7 @@ import { getAllTournaments } from "../api/tournaments";
 import { getPlatformStats } from "../api/stats";
 import { useAuth } from "../hooks/useAuth";
 
-import type { TournamentResponse } from "../types";
+// import type { TournamentResponse } from "../types";
 import TournamentCard from "../components/TournamentCard";
 
 /* ─── Decorative board corner ─────────────────────────────── */

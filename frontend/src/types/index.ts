@@ -29,6 +29,15 @@ export interface AuthResponse {
   message: string;
 }
 
+// NEW TYPES FOR OTP VERIFICATION
+export interface VerifyOtpRequest {
+  email: string;
+  otp: string;
+}
+export interface InitiateResponse {
+  message: string;
+}
+
 export type TournamentStatus =
   | "DRAFT"
   | "UPCOMING"
@@ -54,7 +63,7 @@ export interface TournamentResponse {
   tournamentName: string;
   startDateTime: string;
   numberOfRounds: number;
-  currentRound: number; // NEW API FIELD
+  currentRound: number;
   maxParticipants: number;
   entryFee: number;
   description: string;
@@ -77,7 +86,6 @@ export interface TournamentPlayerDTO {
   fideId: string;
   checkInStatus: string;
 }
-
 export interface RegistrationRequestDTO {
   requestId: string;
   playerId: string;
@@ -86,14 +94,12 @@ export interface RegistrationRequestDTO {
   playerFideId: string;
   requestedAt: string;
 }
-
 export type GameResult =
   | "PENDING"
   | "WHITE_WINS"
   | "BLACK_WINS"
   | "DRAW"
   | "BYE";
-
 export interface GamePairingDTO {
   gameId: string;
   whiteId?: string;
@@ -103,7 +109,6 @@ export interface GamePairingDTO {
   boardNumber: number;
   result: GameResult;
 }
-
 export interface RoundPairingsResponse {
   roundNumber: number;
   pairings: GamePairingDTO[];
@@ -140,7 +145,6 @@ export interface StaffForTournamentResponse {
   name: string;
   userID: string;
 }
-
 export interface PublicUserProfileDTO {
   userId: string;
   firstName: string;
@@ -155,7 +159,6 @@ export interface PublicUserProfileDTO {
   tournamentsOrganized: number;
   tournamentsStaffed: number;
 }
-
 export interface MyTournamentDTO {
   tournamentId: string;
   tournamentName: string;
@@ -171,14 +174,12 @@ export interface MyTournamentDTO {
   losses: number;
   draws: number;
 }
-
 export interface OpponentDTO {
   roundNumber: number;
   opponentId: string;
   opponentName: string;
   result: string;
 }
-
 export interface UserTournamentStatsDTO {
   tournamentId: string;
   tournamentName: string;
@@ -195,7 +196,6 @@ export interface UserTournamentStatsDTO {
   byesReceived: number;
   opponents: OpponentDTO[];
 }
-
 export interface UserDetailsDTO {
   userId: string;
   firstName: string;
@@ -205,7 +205,6 @@ export interface UserDetailsDTO {
   mobileNo: string;
   fideId: string;
 }
-
 export interface PlatformStatsDTO {
   totalUsers: number;
   totalTournamentsOrganized: number;

@@ -537,6 +537,18 @@ export default function StaffPanelPage() {
     }
   }, [activeTournament, currentRound, latestRound, tournamentId]);
 
+  const round = currentRound ?? 1;
+
+  const { data: activePairings, isLoading: isRoundLoading } = useQuery({
+    queryKey: ["pairings", tournamentId, round],
+    queryFn: () => getRoundPairings(tournamentId!, round),
+    enabled:
+      !!tournamentId &&
+      round <= latestRound &&
+      latestRound > 0 &&
+      activeTab === "results",
+  });
+
   const redeemMut = useMutation({
     mutationFn: () => redeemStaffKey(keyToRedeem),
     onSuccess: () => {
@@ -550,30 +562,20 @@ export default function StaffPanelPage() {
     onError: (err: ApiError) => toast.error(err.message || "Invalid Key."),
   });
 
-  const round = currentRound ?? 1;
-
-  const { data: activePairings, isLoading: isRoundLoading } = useQuery({
-    queryKey: ["pairings", tournamentId, round],
-    queryFn: () => getRoundPairings(tournamentId!, round),
-    enabled:
-      !!tournamentId &&
-      round <= latestRound &&
-      latestRound > 0 &&
-      activeTab === "results",
-  });
-
   const pendingGames =
     activePairings?.pairings.filter((g) => g.result === "PENDING") ?? [];
   const settledGames =
     activePairings?.pairings.filter((g) => g.result !== "PENDING") ?? [];
+  const hasPairings = activePairings && activePairings.pairings.length > 0;
 
   const canGoNext = round < latestRound;
   const canGoPrev = round > 1;
+
+  // ROUND ROBIN FIX: Staff cannot edit past rounds unless it is Round Robin.
   const isRoundLocked =
-    round < latestRound ||
     activeTournament?.status === "COMPLETED" ||
-    activeTournament?.status === "CANCELLED";
-  const isNotGenerated = round > latestRound || latestRound === 0;
+    activeTournament?.status === "CANCELLED" ||
+    (activeTournament?.format !== "ROUND_ROBIN" && round < latestRound);
 
   return (
     <>
@@ -872,6 +874,24 @@ export default function StaffPanelPage() {
                       </button>
                     </div>
 
+                    {isRoundLocked &&
+                      activeTournament?.format !== "ROUND_ROBIN" &&
+                      round < latestRound && (
+                        <p
+                          style={{
+                            fontSize: "0.8125rem",
+                            color: "var(--warning)",
+                            marginBottom: "1rem",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "0.5rem",
+                          }}
+                        >
+                          <CheckCircle2 size={14} /> Results for this round are
+                          locked because a newer round exists.
+                        </p>
+                      )}
+
                     <div
                       style={{
                         background: "var(--bg-surface)",
@@ -887,7 +907,7 @@ export default function StaffPanelPage() {
                             style={{ margin: "0 auto" }}
                           />
                         </div>
-                      ) : isNotGenerated ? (
+                      ) : !hasPairings ? (
                         <div style={{ padding: "3rem", textAlign: "center" }}>
                           <p style={{ color: "var(--text-muted)" }}>
                             Round {round} not generated yet.
