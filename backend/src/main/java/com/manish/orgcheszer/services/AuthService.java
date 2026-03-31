@@ -9,11 +9,13 @@ import com.manish.orgcheszer.exceptions.ResourceNotFoundException;
 import com.manish.orgcheszer.repositories.UsersRepository;
 import com.manish.orgcheszer.security.JwtService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AuthService {
@@ -41,6 +43,7 @@ public class AuthService {
         usersRepository.save(user);
 
         String token = jwtService.generateToken(user);
+        log.info("New user registered. userId: {}", user.getId());
         return new AuthResponse(token, "User registered successfully");
     }
 
@@ -57,6 +60,7 @@ public class AuthService {
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         String token = jwtService.generateToken(user);
+        log.info("User successfully authenticated. userId: {}", user.getId());
         return new AuthResponse(token, "Login successful");
     }
 }

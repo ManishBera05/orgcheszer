@@ -12,6 +12,7 @@ import com.manish.orgcheszer.repositories.PlayerTournamentStatsRepository;
 import com.manish.orgcheszer.repositories.RoundsRepository;
 import com.manish.orgcheszer.repositories.TournamentRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
@@ -23,6 +24,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class LeaderboardCacheService {
@@ -37,7 +39,8 @@ public class LeaderboardCacheService {
         // Remove the pagination part (PageImpl) — just return the full sorted list
         // Keep: load stats, build DTOs, sort, assign ranks, persist finalRank
         // Return: List<LeaderboardEntryDTO>
-        System.out.println("Leaderboard miss");
+        log.warn("Leaderboard redis-cache miss");
+
         Tournament tournament = tournamentRepository.findById(tournamentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Tournament not found"));
 
@@ -89,6 +92,7 @@ public class LeaderboardCacheService {
             requiredPlayer.setFinalRank(i+1);
             statsRepository.save(requiredPlayer);
         }
+        log.info("Full Leaderboard created");
         return leaderboard;
     }
 

@@ -42,9 +42,7 @@ public class UserService {
     private final GameRepository                  gameRepository;
     private final RoundsRepository                roundsRepository;
 
-    // ─────────────────────────────────────────────────────────────────────────
     // PUBLIC: summary numbers only — no sensitive data
-    // ─────────────────────────────────────────────────────────────────────────
     public PublicUserProfileDTO getPublicProfile(UUID userId) {
         Users user = usersRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));

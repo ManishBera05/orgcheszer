@@ -8,6 +8,7 @@ import com.manish.orgcheszer.exceptions.ResourceNotFoundException;
 import com.manish.orgcheszer.exceptions.UnauthorizedActionException;
 import com.manish.orgcheszer.repositories.*;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -16,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class TournamentTicketService {
@@ -42,7 +44,7 @@ public class TournamentTicketService {
         ticket.setTicketToken(UUID.randomUUID().toString()); // encoded in QR
         ticket.setStatus(TicketStatus.VALID);
         ticket.setIssuedAt(LocalDateTime.now());
-
+        log.info("Ticket issued for player {} for tournament {}", player.getId(), tournament.getTournamentId());
         return ticketRepository.save(ticket);
     }
 
@@ -82,6 +84,7 @@ public class TournamentTicketService {
         ticket.setStatus(TicketStatus.CHECKED_IN);
         ticket.setScannedAt(LocalDateTime.now());
         ticketRepository.save(ticket);
+        log.info("Ticket {} checked in of tournament {}",ticketToken, tournamentId);
     }
 
     // CANCEL TICKET

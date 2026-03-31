@@ -28,6 +28,7 @@ import com.manish.orgcheszer.repositories.TournamentStaffRepository;
 import com.manish.orgcheszer.repositories.TournamentTicketRepository;
 import com.manish.orgcheszer.repositories.UsersRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -42,6 +43,7 @@ import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class TournamentService {
@@ -65,7 +67,6 @@ public class TournamentService {
         String email = SecurityContextHolder.getContext()
                 .getAuthentication()
                 .getName();
-        System.out.println("error here : "+ email);
         return usersRepository.findByEmail(email)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
     }
@@ -89,6 +90,7 @@ public class TournamentService {
         tournament.setOrganizer(organizer);
 
         tournamentRepository.save(tournament);
+        log.info("Tournament {} Created", tournament.getTournamentId());
         return mapToResponse(tournament);
     }
 
@@ -151,6 +153,7 @@ public class TournamentService {
         tournament.setFormat(TournamentFormat.valueOf(request.getFormat()));
 
         tournamentRepository.save(tournament);
+        log.info("Tournament {} updated", tournamentId);
         return mapToResponse(tournament);
     }
 
@@ -172,6 +175,7 @@ public class TournamentService {
         registrationRequestRepository.deleteAllByTournamentTournamentId(tournamentId);
 
         tournament.setStatus(TournamentStatus.CANCELLED);
+        log.info("Tournament {} cancelled", tournamentId);
         tournamentRepository.save(tournament);
     }
 
@@ -200,13 +204,13 @@ public class TournamentService {
         }
 
         if (tournament.getEntryFee() == 0) {
-            // ── FREE TOURNAMENT: existing flow unchanged ───────────────────────
+            // FREE TOURNAMENT: direct entry no verification needed
             if (tournament.getPlayers().size() >= tournament.getMaxParticipants()) {
                 throw new ConflictException("Tournament is full");
             }
             return addPlayerToTournament(currentUser, tournament);
         } else {
-            // ── PAID TOURNAMENT: goes through request/approval flow ────────────
+            // PAID TOURNAMENT: goes through request/approval flow
             return submitRegistrationRequest(currentUser, tournament);
         }
 
@@ -230,7 +234,6 @@ public class TournamentService {
     }
 
     // SUBMIT REGISTRATION REQUEST (paid tournaments only)
-// ─────────────────────────────────────────────────────────────────────────────
     private RegistrationRequestDTO submitRegistrationRequest(Users player, Tournament tournament) {
         UUID tournamentId = tournament.getTournamentId();
 
@@ -262,6 +265,7 @@ public class TournamentService {
         request.setStatus(RegistrationRequestStatus.PENDING);
         request.setRequestedAt(LocalDateTime.now());
         registrationRequestRepository.save(request);
+        log.info("Player {} request to tournament {}", player.getId(), tournamentId);
         return RegistrationRequestDTO.builder()
                 .requestedAt(LocalDateTime.now())
                 .playerEloRating(player.getEloRating())
@@ -273,7 +277,6 @@ public class TournamentService {
     }
 
     // GET PENDING REQUESTS (organizer only)
-// ─────────────────────────────────────────────────────────────────────────────
     public Page<RegistrationRequestDTO> getPendingRequests(UUID tournamentId, int page, int size) {
         Tournament tournament = tournamentRepository.findById(tournamentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Tournament not found"));
@@ -300,7 +303,6 @@ public class TournamentService {
     }
 
     // APPROVE REQUEST (organizer only)
-// ─────────────────────────────────────────────────────────────────────────────
     public void approveRequest(UUID tournamentId, UUID requestId) {
         Tournament tournament = tournamentRepository.findById(tournamentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Tournament not found"));
@@ -340,6 +342,7 @@ public class TournamentService {
         // Add player to tournament — then delete the request
         addPlayerToTournament(request.getPlayer(), tournament);
         registrationRequestRepository.delete(request);
+        log.info("Request ID {} in the tournament {} is approved", requestId, tournamentId);
     }
 
 
@@ -370,6 +373,7 @@ public class TournamentService {
 
         // Silently delete — player can reapply
         registrationRequestRepository.delete(request);
+        log.info("Request ID {} in the tournament {} is rejected", requestId, tournamentId);
     }
 
     private void validateTournamentRequest(TournamentCreateRequest request) {
@@ -422,6 +426,7 @@ public class TournamentService {
             throw new BadRequestException(
                     "Entry fee cannot be negative");
         }
+        log.info("Swiss tournament valid");
     }
 
     public String getMyTicketToken(UUID tournamentId) {
@@ -529,6 +534,7 @@ public class TournamentService {
 
         tournament.setStatus(TournamentStatus.UPCOMING);
         tournamentRepository.save(tournament);
+        log.info("Tournament {} is approved by admin", tournamentId);
     }
 
     public List<TournamentResponse> getDraftTournaments() {
@@ -541,7 +547,6 @@ public class TournamentService {
 
     // HELPER — shared by free tournament flow and approval flow
     // Creates stats, adds to players list, issues ticket
-    // ─────────────────────────────────────────────────────────────────────────────
     private RegistrationRequestDTO addPlayerToTournament(Users player, Tournament tournament) {
         UUID tournamentId = tournament.getTournamentId();
 
@@ -560,6 +565,8 @@ public class TournamentService {
 
         tournamentRepository.save(tournament);
         tournamentTicketService.issueTicket(player, tournament);
+
+        log.info("Player {} in the tournament {} is approved", player.getId(), tournamentId);
 
         return RegistrationRequestDTO.builder()
                 .requestedAt(LocalDateTime.now())
@@ -580,12 +587,14 @@ public class TournamentService {
         }
 
         tournamentRepository.delete(tournament);
+        log.info("Tournament {} deleted from the drafts by admin", tournamentId);
     }
 
     public void deleteAllDraftTournaments() {
         List<Tournament> drafts = tournamentRepository
                 .findByStatus(TournamentStatus.DRAFT);
         tournamentRepository.deleteAll(drafts);
+        log.info("All Draft tournaments deleted by admin");
     }
 
     public void endTournament(UUID tournamentId) {
@@ -636,5 +645,6 @@ public class TournamentService {
         // Persist final rankings
         leaderboardService.recalculateTiebreakers(tournamentId);
         leaderboardService.getLeaderboard(tournamentId, 0, Integer.MAX_VALUE);
+        log.info("Tournament {} ended", tournamentId);
     }
 }

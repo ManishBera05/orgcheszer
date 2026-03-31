@@ -7,6 +7,7 @@ import com.manish.orgcheszer.enums.TournamentFormat;
 import com.manish.orgcheszer.exceptions.ResourceNotFoundException;
 import com.manish.orgcheszer.repositories.*;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
@@ -18,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.*;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class LeaderboardService {
@@ -147,6 +149,8 @@ public class LeaderboardService {
             stats.setBuchholzMedian(buchholzMedian);
             stats.setSonnebornBerger(sonnenbornBerger);
             statsRepository.save(stats);
+
+            log.info("Tie breaks Calculated and saved");
         }
     }
 }

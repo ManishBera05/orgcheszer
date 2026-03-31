@@ -5,6 +5,7 @@ import com.manish.orgcheszer.engine.models.Pairing;
 import com.manish.orgcheszer.engine.models.PlayerStanding;
 import com.manish.orgcheszer.exceptions.PairingEngineException;
 import javafo.api.JaVaFoApi;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.io.*;
@@ -13,6 +14,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
 
+@Slf4j
 @Component("SWISS")
 public class SwissEngineImpl implements PairingEngine {
 
@@ -64,10 +66,6 @@ public class SwissEngineImpl implements PairingEngine {
 
         // Capture JaVaFo output
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-
-        // Check the correctness of the tournamnet before generating the output
-//        String checkerOutput = JaVaFoApi.exec(1200,inputStream);
-//        System.out.println(checkerOutput);
 
         // Call JaVaFo — second arg is ignored per the API docs
         JaVaFoApi.exec(1000, "OrgCheszer", inputStream, outputStream);
@@ -225,9 +223,9 @@ public class SwissEngineImpl implements PairingEngine {
         try {
             Path tempFile = Files.createTempFile(filenamePrefix + "_", ".trf");
             Files.writeString(tempFile, content);
-            System.out.println("TRF saved: " + tempFile.toAbsolutePath());
+            log.info("TRF saved: {}", tempFile.toAbsolutePath());
         } catch (IOException e) {
-            System.err.println("Failed to write TRF file: " + e.getMessage());
+            log.warn("Failed to write TRF file: {}", e.getMessage());
         }
     }
 

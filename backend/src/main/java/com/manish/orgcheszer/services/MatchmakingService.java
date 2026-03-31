@@ -18,6 +18,7 @@ import com.manish.orgcheszer.exceptions.ResourceNotFoundException;
 import com.manish.orgcheszer.exceptions.UnauthorizedActionException;
 import com.manish.orgcheszer.repositories.*;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.context.ApplicationContext;
@@ -29,6 +30,7 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class MatchmakingService {
@@ -214,6 +216,7 @@ public class MatchmakingService {
             gameRepository.save(game);
         }
 
+        log.info("Rounnd {} of tournament {} generated.", newRound, tournamentId);
         return roundPairingsCacheService.getRoundPairings(tournamentId, nextRoundNumber);
     }
 
@@ -293,6 +296,7 @@ public class MatchmakingService {
         updatePlayerScore(game.getBlackPlayer().getId(), tournamentId, result, false);
 
         leaderboardService.recalculateTiebreakers(tournamentId);
+        log.info("Result of game {} submitted ", gameId);
 //        checkAndFinalizeTournament(tournament);
     }
 
@@ -349,6 +353,7 @@ public class MatchmakingService {
 
         tournament.setStatus(TournamentStatus.ONGOING);
         tournamentRepository.save(tournament);
+        log.info("All round robin rounds of tournament {} generated", tournament.getTournamentId());
     }
 
     private void updatePlayerScore(UUID playerId, UUID tournamentId,
@@ -381,6 +386,7 @@ public class MatchmakingService {
         }
 
         statsRepository.save(stats);
+        log.info("Player {} score updated in tournament {} ", playerId, tournamentId);
     }
 
     private void reversePlayerScore(UUID playerId, UUID tournamentId,
