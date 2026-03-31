@@ -6,6 +6,14 @@ spring:
     hibernate:
       ddl-auto: create-drop
     database-platform: org.hibernate.dialect.H2Dialect
+  # Point Redis to a dummy port so it doesn't try to connect to prod
+  data:
+    redis:
+      host: localhost
+      port: 9999
+  # Tell Spring to use a simple HashMap in memory instead of Redis for caching
+  cache:
+    type: simple
 application:
   security:
     jwt:

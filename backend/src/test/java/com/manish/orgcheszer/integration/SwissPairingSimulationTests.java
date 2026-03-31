@@ -8,6 +8,7 @@ import com.manish.orgcheszer.repositories.*;
 import com.manish.orgcheszer.services.LeaderboardService;
 import com.manish.orgcheszer.services.MatchmakingService;
 import com.manish.orgcheszer.services.TournamentService;
+import io.github.bucket4j.distributed.proxy.ProxyManager;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -16,7 +17,13 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
+//import org.springframework.test.context.DynamicPropertyRegistry;
+//import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Transactional;
+//import org.testcontainers.containers.GenericContainer;
+//import org.testcontainers.junit.jupiter.Container;
+//import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -35,8 +42,27 @@ import static org.junit.jupiter.api.Assertions.*;
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 @ActiveProfiles("test")
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
+//@Testcontainers
 @WithMockUser(username = "organizer@test.com")
 class SwissPairingSimulationTests {
+
+//    @Container
+//    private static final GenericContainer<?> REDIS_CONTAINER =
+//            new GenericContainer<>("redis:7-alpine").withExposedPorts(6379);
+//
+//    // 3. INJECT DYNAMIC REDIS PROPERTIES
+//    // Docker assigns a random port to avoid conflicts. This tells Spring Boot
+//    // to use that random port instead of the default 6379.
+//    @DynamicPropertySource
+//    static void registerRedisProperties(DynamicPropertyRegistry registry) {
+//        registry.add("spring.data.redis.host", REDIS_CONTAINER::getHost);
+//        registry.add("spring.data.redis.port", () -> REDIS_CONTAINER.getMappedPort(6379));
+//    }
+    // =========================================================================
+
+
+    @MockitoBean
+    private ProxyManager<String> proxyManager; // pass the tests without redis
 
     @Autowired private UsersRepository            usersRepo;
     @Autowired private TournamentRepository       tournamentRepo;
@@ -51,6 +77,8 @@ class SwissPairingSimulationTests {
     // Shared state across test methods
     private static UUID tournamentId;
     private static final Map<Integer, UUID> pairingIdToUserId = new LinkedHashMap<>(); // pairingId → userId
+
+
 
     // SETUP — runs once before all tests
     @BeforeAll

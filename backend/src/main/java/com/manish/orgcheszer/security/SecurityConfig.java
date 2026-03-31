@@ -24,6 +24,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
     private final JwtAuthFilter jwtAuthFilter;
+    private final RateLimitFilter rateLimitFilter;
     private final UserDetailsServiceImpl userDetailsService;
 
     @Bean
@@ -40,30 +41,41 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         // Public endpoints — no token needed
                         .requestMatchers(
-                                "/api/auth/**",         // login, register
-                                "/api/tournaments",     // browse tournaments
-                                "/api/tournaments/*/leaderboard",
-                                "/api/tournaments/*/players",
-                                "/swagger-ui.html",
-                                "/swagger-ui.html",
-                                "/swagger-ui/**",
-                                "/v3/api-docs/**",
-                                "/v3/api-docs",
-                                "/api/users/**",
-                                "/api/stats",
+                                "/error",    // built-in fallback endpoint used to handle errors that occur during request processing
                                 "/actuator/**",
-                                "/error"    // built-in fallback endpoint used to handle errors that occur during request processing
+                                "/swagger-ui/**",
+                                "/swagger-ui.html",
+                                "/v3/api-docs/**",
+                                "/v3/api-docs"
+
                         ).permitAll()
-                        // Only these specific tournament GET endpoints are public
-                        .requestMatchers(HttpMethod.GET, "/api/tournaments").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/tournaments/*").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/tournaments/*/leaderboard").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/tournaments/*/players").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/tournaments/*/rounds/*/pairings").permitAll()
+                        // 2. AUTHENTICATION (Always Public)
+                        .requestMatchers("/api/auth/**").permitAll()
+                        // 3. PLATFORM STATS (Public GET)
+                        .requestMatchers(HttpMethod.GET, "/api/stats").permitAll()
+                        // 4. PRIVATE USER ENDPOINTS (Must be placed BEFORE the public wildcard)
+                        // This prevents "/api/users/*" from accidentally making these public
+                        .requestMatchers(HttpMethod.GET,
+                                "/api/users/me",
+                                "/api/users/my-tournaments"
+                        ).authenticated()
+                        // 5. PUBLIC USER ENDPOINTS (Public GET)
+                        .requestMatchers(HttpMethod.GET,
+                                "/api/users/*",
+                                "/api/users/*/tournament/*"
+                        ).permitAll()
+                        .requestMatchers(HttpMethod.GET,
+                                "/api/tournaments",                         // Browse all
+                                "/api/tournaments/*",                       // View specific details
+                                "/api/tournaments/*/leaderboard",           // View standings
+                                "/api/tournaments/*/players",               // View registered players
+                                "/api/tournaments/*/rounds/*/pairings"      // View specific round pairings
+                        ).permitAll()
                         .anyRequest().authenticated()
                 )
                 .authenticationProvider(authenticationProvider())
-                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterAfter(rateLimitFilter, JwtAuthFilter.class);
 
         return http.build();
     }
