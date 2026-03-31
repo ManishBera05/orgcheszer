@@ -3,6 +3,7 @@ package com.manish.orgcheszer.engine;
 import com.manish.orgcheszer.engine.models.PastMatch;
 import com.manish.orgcheszer.engine.models.Pairing;
 import com.manish.orgcheszer.engine.models.PlayerStanding;
+import com.manish.orgcheszer.exceptions.PairingEngineException;
 import javafo.api.JaVaFoApi;
 import org.springframework.stereotype.Component;
 
@@ -41,7 +42,7 @@ public class SwissEngineImpl implements PairingEngine {
         try {
             return callJavafoAndParse(trfContent, idToUuidMap);
         } catch (Exception e) {
-            throw new RuntimeException("JaVaFo pairing failed: " + e.getMessage(), e);
+            throw new PairingEngineException("JaVaFo pairing failed: " + e.getMessage(), e);
         }
     }
 
@@ -89,7 +90,7 @@ public class SwissEngineImpl implements PairingEngine {
         List<Pairing> pairings = new ArrayList<>();
 
         if (output == null || output.isBlank()) {
-            throw new RuntimeException("JaVaFo returned empty output — check TRF file format");
+            throw new PairingEngineException("JaVaFo returned empty output — check TRF file format");
         }
 
         String[] lines = output.trim().split("\n");
@@ -102,7 +103,7 @@ public class SwissEngineImpl implements PairingEngine {
             String[] parts = line.split("\\s+");
 
             if (parts.length != 2) {
-                throw new RuntimeException(
+                throw new PairingEngineException(
                         "Unexpected JaVaFo output line format: '" + line + "'" +
                                 " — expected 'whiteId blackId'");
             }
@@ -112,7 +113,7 @@ public class SwissEngineImpl implements PairingEngine {
 
             UUID whiteUuid = idToUuidMap.get(whiteId);
             if (whiteUuid == null) {
-                throw new RuntimeException(
+                throw new PairingEngineException(
                         "Unknown pairing ID in JaVaFo output: " + whiteId);
             }
 
@@ -127,7 +128,7 @@ public class SwissEngineImpl implements PairingEngine {
                 // Normal pairing
                 UUID blackUuid = idToUuidMap.get(blackId);
                 if (blackUuid == null) {
-                    throw new RuntimeException(
+                    throw new PairingEngineException(
                             "Unknown pairing ID in JaVaFo output: " + blackId);
                 }
                 pairings.add(Pairing.builder()
