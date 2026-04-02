@@ -5,6 +5,7 @@ import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Trophy, Plus, ArrowLeft, Loader2 } from "lucide-react";
 import { createTournament } from "../api/tournaments";
+import { toUtcIsoString } from "../lib/utils"; // IMPORT CONVERTER
 import type { TournamentCreateRequest, ApiError } from "../types";
 
 export default function CreateTournamentPage() {
@@ -12,7 +13,7 @@ export default function CreateTournamentPage() {
 
   const [formData, setFormData] = useState<TournamentCreateRequest>({
     tournamentName: "",
-    startDateTime: "",
+    startDateTime: "", // This stores the local time string from the HTML input
     numberOfRounds: 5,
     maxParticipants: 32,
     entryFee: 0,
@@ -66,7 +67,13 @@ export default function CreateTournamentPage() {
     if (formData.maxParticipants < 4)
       return toast.error("Participants must be at least 4");
 
-    mutation.mutate(formData);
+    // Convert the local time to UTC before sending to backend
+    const payload = {
+      ...formData,
+      startDateTime: toUtcIsoString(formData.startDateTime),
+    };
+
+    mutation.mutate(payload);
   };
 
   const inputStyle = {
@@ -161,7 +168,6 @@ export default function CreateTournamentPage() {
             gap: "1.5rem",
           }}
         >
-          {/* Name */}
           <div>
             <label
               style={{
@@ -186,7 +192,6 @@ export default function CreateTournamentPage() {
             />
           </div>
 
-          {/* Date & Location */}
           <div className="ct-grid-2">
             <div>
               <label
@@ -234,7 +239,6 @@ export default function CreateTournamentPage() {
             </div>
           </div>
 
-          {/* Format & Time Control */}
           <div className="ct-grid-2">
             <div>
               <label
@@ -283,7 +287,6 @@ export default function CreateTournamentPage() {
             </div>
           </div>
 
-          {/* Numbers */}
           <div className="ct-grid-3">
             <div>
               <label
@@ -354,7 +357,6 @@ export default function CreateTournamentPage() {
             </div>
           </div>
 
-          {/* Description */}
           <div>
             <label
               style={{
@@ -377,7 +379,6 @@ export default function CreateTournamentPage() {
             />
           </div>
 
-          {/* Actions */}
           <div
             style={{
               display: "flex",

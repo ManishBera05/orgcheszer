@@ -7,21 +7,67 @@ import type { TournamentStatus, GameResult } from "../types";
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
+/* ─── Date & Timezone handling ───────────────────────────── */
 
-/* ─── Date formatting ────────────────────────────────────── */
+// Safely forces the string to be treated as UTC by appending 'Z'
+function ensureUtc(isoString: string): string {
+  if (!isoString) return "";
+  // If it already contains timezone info (+, -, or Z), leave it alone.
+  if (/(Z|[+-]\d{2}:\d{2})$/.test(isoString)) {
+    return isoString;
+  }
+  return `${isoString}Z`;
+}
+
 export function formatDate(isoString: string): string {
   try {
-    return format(parseISO(isoString), "dd MMM yyyy");
+    const date = new Date(ensureUtc(isoString));
+    if (isNaN(date.getTime())) return isoString;
+    return format(date, "dd MMM yyyy");
   } catch {
     return isoString;
   }
 }
 
+// Displays backend UTC time as User's Local Time
 export function formatDateTime(isoString: string): string {
   try {
-    return format(parseISO(isoString), "dd MMM yyyy, HH:mm");
+    const date = new Date(ensureUtc(isoString));
+    if (isNaN(date.getTime())) return isoString;
+    return format(date, "dd MMM yyyy, HH:mm");
   } catch {
     return isoString;
+  }
+}
+
+// Converts backend UTC time to User's Local Time for the HTML <input type="datetime-local">
+export function toLocalInputFormat(utcString: string): string {
+  if (!utcString) return "";
+  try {
+    const date = new Date(ensureUtc(utcString));
+    if (isNaN(date.getTime())) return utcString;
+
+    // We must format it exactly as YYYY-MM-DDTHH:mm in local time for the input field
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, "0");
+    const d = String(date.getDate()).padStart(2, "0");
+    const h = String(date.getHours()).padStart(2, "0");
+    const min = String(date.getMinutes()).padStart(2, "0");
+    return `${y}-${m}-${d}T${h}:${min}`;
+  } catch {
+    return utcString;
+  }
+}
+
+// Converts Local time from HTML <input> to UTC for the Spring Boot backend
+export function toUtcIsoString(localInputString: string): string {
+  if (!localInputString) return "";
+  try {
+    const date = new Date(localInputString); // Browser parses this as local time
+    // Returns UTC string and strips the .000Z to match Spring Boot's LocalDateTime
+    return date.toISOString().split(".")[0];
+  } catch {
+    return localInputString;
   }
 }
 

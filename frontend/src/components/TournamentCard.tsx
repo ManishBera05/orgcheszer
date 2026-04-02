@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { MapPin, Clock, CalendarDays, Hash } from "lucide-react";
 import { formatDateTime, formatEntryFee, truncate } from "../lib/utils";
-import type { TournamentResponse, TournamentStatus } from "../types";
+import type { TournamentResponse } from "../types";
 
 function useCountdown(targetIso: string) {
   const calc = () => {

@@ -39,7 +39,6 @@ export interface InitiateResponse {
 }
 
 export type TournamentStatus =
-  | "DRAFT"
   | "UPCOMING"
   | "ONGOING"
   | "COMPLETED"

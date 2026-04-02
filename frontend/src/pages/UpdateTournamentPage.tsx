@@ -9,6 +9,7 @@ import {
   updateTournament,
   cancelTournament,
 } from "../api/tournaments";
+import { toLocalInputFormat, toUtcIsoString } from "../lib/utils"; // IMPORT CONVERTERS
 import type { TournamentCreateRequest, ApiError } from "../types";
 
 export default function UpdateTournamentPage() {
@@ -38,7 +39,8 @@ export default function UpdateTournamentPage() {
     if (tournament) {
       setFormData({
         tournamentName: tournament.tournamentName,
-        startDateTime: tournament.startDateTime.slice(0, 16), // Trim for datetime-local
+        // Convert incoming UTC time to user's Local time for the input box
+        startDateTime: toLocalInputFormat(tournament.startDateTime),
         numberOfRounds: tournament.numberOfRounds,
         maxParticipants: tournament.maxParticipants,
         entryFee: tournament.entryFee,
@@ -95,7 +97,14 @@ export default function UpdateTournamentPage() {
     e.preventDefault();
     if (!formData.tournamentName.trim() || !formData.startDateTime)
       return toast.error("Missing required fields.");
-    updateMut.mutate(formData);
+
+    // Convert local time back to UTC before sending to backend
+    const payload = {
+      ...formData,
+      startDateTime: toUtcIsoString(formData.startDateTime),
+    };
+
+    updateMut.mutate(payload);
   };
 
   const handleCancelTournament = () => {
