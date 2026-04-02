@@ -7,9 +7,16 @@
     "version": "1.0"
   },
   "servers": [
-    { "url": "http://localhost:8080", "description": "Generated server url" }
+    {
+      "url": "https://orgcheszer-api.onrender.com",
+      "description": "Generated server url"
+    }
   ],
   "tags": [
+    {
+      "name": "9. Gets live stats",
+      "description": "Public endpoint to get the live statistics of the API"
+    },
     {
       "name": "3. Matchmaking & Gameplay",
       "description": "Endpoints for generating pairings and submitting game results"
@@ -21,6 +28,10 @@
     {
       "name": "1. Authentication",
       "description": "Endpoints for User Registration and Login"
+    },
+    {
+      "name": "8. Admin Controller",
+      "description": "Endpoints for Admin to validate tournaments"
     },
     {
       "name": "7. User Profiles",
@@ -107,14 +118,33 @@
         "summary": "Get all public tournaments",
         "description": "Public endpoint to view all tournaments.",
         "operationId": "getAllTournaments",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "format": "int32", "default": 0 }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "format": "int32", "default": 12 }
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK",
             "content": {
               "*/*": {
                 "schema": {
-                  "type": "array",
-                  "items": { "$ref": "#/components/schemas/TournamentResponse" }
+                  "$ref": "#/components/schemas/PageTournamentResponse"
                 }
               }
             }
@@ -254,7 +284,18 @@
             "schema": { "type": "string", "format": "uuid" }
           }
         ],
-        "responses": { "200": { "description": "OK" } },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistrationRequestDTO"
+                }
+              }
+            }
+          }
+        },
         "security": [{ "bearerAuth": [] }]
       }
     },
@@ -276,12 +317,38 @@
         "security": [{ "bearerAuth": [] }]
       }
     },
-    "/api/auth/register": {
+    "/api/auth/register/verify": {
       "post": {
         "tags": ["1. Authentication"],
-        "summary": "Register a new user",
-        "description": "Creates a new user account. No token required.",
-        "operationId": "register",
+        "summary": "Verify OTP and complete registration",
+        "description": "Verifies OTP and creates the account",
+        "operationId": "verifyAndRegister",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/OtpVerifyRequest" }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": { "$ref": "#/components/schemas/AuthResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/register/initiate": {
+      "post": {
+        "tags": ["1. Authentication"],
+        "summary": "Initiate registration",
+        "description": "Validates fields and sends OTP to email",
+        "operationId": "initiateRegistration",
         "requestBody": {
           "content": {
             "application/json": {
@@ -295,7 +362,7 @@
             "description": "OK",
             "content": {
               "*/*": {
-                "schema": { "$ref": "#/components/schemas/AuthResponse" }
+                "schema": { "$ref": "#/components/schemas/MessageResponse" }
               }
             }
           }
@@ -326,6 +393,54 @@
             }
           }
         }
+      }
+    },
+    "/api/tournaments/{tournamentId}/requests/{requestId}/reject": {
+      "patch": {
+        "tags": ["2. Tournament Management"],
+        "summary": "Reject the user from entering the tournament",
+        "description": "Reject the request to enter a tournament to a user who requested for it.",
+        "operationId": "rejectRequest",
+        "parameters": [
+          {
+            "name": "tournamentId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "requestId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": { "200": { "description": "OK" } },
+        "security": [{ "bearerAuth": [] }]
+      }
+    },
+    "/api/tournaments/{tournamentId}/requests/{requestId}/approve": {
+      "patch": {
+        "tags": ["2. Tournament Management"],
+        "summary": "Verify payment and grant the user to enter the tournament",
+        "description": "Grant access to the tournament to the registered player to enter in the tournament",
+        "operationId": "approveRequest",
+        "parameters": [
+          {
+            "name": "tournamentId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "requestId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": { "200": { "description": "OK" } },
+        "security": [{ "bearerAuth": [] }]
       }
     },
     "/api/tournaments/{tournamentId}/games/{gameId}/result": {
@@ -366,6 +481,29 @@
         "security": [{ "bearerAuth": [] }]
       }
     },
+    "/api/tournaments/{tournamentId}/end-tournament": {
+      "patch": {
+        "tags": ["2. Tournament Management"],
+        "summary": "End tournament",
+        "description": "Ends the tournament in the current round(all games must end)",
+        "operationId": "endTournament",
+        "parameters": [
+          {
+            "name": "tournamentId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": { "*/*": { "schema": { "type": "string" } } }
+          }
+        },
+        "security": [{ "bearerAuth": [] }]
+      }
+    },
     "/api/tournaments/{tournamentId}/cancel": {
       "patch": {
         "tags": ["2. Tournament Management"],
@@ -384,12 +522,41 @@
         "security": [{ "bearerAuth": [] }]
       }
     },
+    "/api/admin/tournaments/{tournamentId}/approve": {
+      "patch": {
+        "tags": ["8. Admin Controller"],
+        "summary": "Approve tournaments",
+        "description": "Admin approves the requests for a tournament creation.",
+        "operationId": "approveTournament",
+        "parameters": [
+          {
+            "name": "tournamentId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "X-Admin-Key",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": { "*/*": { "schema": { "type": "string" } } }
+          }
+        },
+        "security": [{ "bearerAuth": [] }]
+      }
+    },
     "/api/users/{userId}": {
       "get": {
         "tags": ["7. User Profiles"],
-        "summary": "Get user's tournament history",
-        "description": "Public endpoint to view all tournaments a user has organized, staffed, or played in. No token required.",
-        "operationId": "getUserTournaments",
+        "summary": "Public profile of user",
+        "description": "Public endpoint to view users overall status and how many games he won tournaments organized, participated etc.",
+        "operationId": "getPublicProfile",
         "parameters": [
           {
             "name": "userId",
@@ -404,10 +571,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/UserTournamentSummaryDTO"
-                  }
+                  "$ref": "#/components/schemas/PublicUserProfileDTO"
                 }
               }
             }
@@ -447,6 +611,96 @@
             }
           }
         }
+      }
+    },
+    "/api/users/my-tournaments": {
+      "get": {
+        "tags": ["7. User Profiles"],
+        "summary": "Gets user's stats",
+        "description": "Private endpoint that shows which tournament participated along with the roles and opponents played against.",
+        "operationId": "getMyTournaments",
+        "parameters": [
+          {
+            "name": "role",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "format": "int32", "default": 0 }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "format": "int32", "default": 10 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": { "$ref": "#/components/schemas/PageMyTournamentDTO" }
+              }
+            }
+          }
+        },
+        "security": [{ "bearerAuth": [] }]
+      }
+    },
+    "/api/users/me": {
+      "get": {
+        "tags": ["7. User Profiles"],
+        "summary": "Gets user's profile",
+        "description": "Private endpoint that shows details about the users.",
+        "operationId": "getMyProfile",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": { "$ref": "#/components/schemas/UserDetailsDTO" }
+              }
+            }
+          }
+        },
+        "security": [{ "bearerAuth": [] }]
+      }
+    },
+    "/api/tournaments/{tournamentId}/staffs": {
+      "get": {
+        "tags": ["4. Staff Keys"],
+        "summary": "View tournament staffs",
+        "description": "View all users who redeemed the staff keys of a tournament. Organizer only.",
+        "operationId": "getStaffs",
+        "parameters": [
+          {
+            "name": "tournamentId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/StaffForTournamentResponse"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [{ "bearerAuth": [] }]
       }
     },
     "/api/tournaments/{tournamentId}/staff-keys": {
@@ -513,6 +767,47 @@
         }
       }
     },
+    "/api/tournaments/{tournamentId}/requests": {
+      "get": {
+        "tags": ["2. Tournament Management"],
+        "summary": "Shows the users requesting to join the tournament",
+        "description": "Fetches all the registered participants verify them for the payment",
+        "operationId": "getPendingRequests",
+        "parameters": [
+          {
+            "name": "tournamentId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "format": "int32", "default": 0 }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "format": "int32", "default": 50 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageRegistrationRequestDTO"
+                }
+              }
+            }
+          }
+        },
+        "security": [{ "bearerAuth": [] }]
+      }
+    },
     "/api/tournaments/{tournamentId}/players": {
       "get": {
         "tags": ["2. Tournament Management"],
@@ -525,6 +820,18 @@
             "in": "path",
             "required": true,
             "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "format": "int32", "default": 0 }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "format": "int32", "default": 50 }
           }
         ],
         "responses": {
@@ -533,10 +840,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/TournamentPlayerDTO"
-                  }
+                  "$ref": "#/components/schemas/PageTournamentPlayerDTO"
                 }
               }
             }
@@ -579,6 +883,18 @@
             "in": "path",
             "required": true,
             "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "format": "int32", "default": 0 }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "format": "int32", "default": 50 }
           }
         ],
         "responses": {
@@ -587,10 +903,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/LeaderboardEntryDTO"
-                  }
+                  "$ref": "#/components/schemas/PageLeaderboardEntryDTO"
                 }
               }
             }
@@ -598,12 +911,36 @@
         }
       }
     },
-    "/api/tournaments/my-tournaments": {
+    "/api/stats": {
       "get": {
-        "tags": ["2. Tournament Management"],
-        "summary": "Get my organized tournaments",
-        "description": "Fetches tournaments where the currently logged-in user is the Organizer.",
-        "operationId": "getMyTournaments",
+        "tags": ["9. Gets live stats"],
+        "operationId": "getStats",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": { "$ref": "#/components/schemas/PlatformStatsDTO" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/tournaments/drafts": {
+      "get": {
+        "tags": ["8. Admin Controller"],
+        "summary": "Get draft tournaments",
+        "description": "Get all the requests for a tournament creation.",
+        "operationId": "getDraftTournaments",
+        "parameters": [
+          {
+            "name": "X-Admin-Key",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -615,6 +952,54 @@
                 }
               }
             }
+          }
+        },
+        "security": [{ "bearerAuth": [] }]
+      },
+      "delete": {
+        "tags": ["8. Admin Controller"],
+        "summary": "Delete all tournaments",
+        "operationId": "deleteAllDraftTournaments",
+        "parameters": [
+          {
+            "name": "X-Admin-Key",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": { "*/*": { "schema": { "type": "string" } } }
+          }
+        },
+        "security": [{ "bearerAuth": [] }]
+      }
+    },
+    "/api/admin/tournaments/{tournamentId}/draft": {
+      "delete": {
+        "tags": ["8. Admin Controller"],
+        "summary": "Delete a draft tournament",
+        "operationId": "deleteDraftTournament",
+        "parameters": [
+          {
+            "name": "tournamentId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "X-Admin-Key",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": { "*/*": { "schema": { "type": "string" } } }
           }
         },
         "security": [{ "bearerAuth": [] }]
@@ -684,6 +1069,7 @@
           "tournamentName": { "type": "string" },
           "startDateTime": { "type": "string", "format": "date-time" },
           "numberOfRounds": { "type": "integer", "format": "int32" },
+          "currentRound": { "type": "integer", "format": "int32" },
           "maxParticipants": { "type": "integer", "format": "int32" },
           "entryFee": { "type": "integer", "format": "int32" },
           "description": { "type": "string" },
@@ -691,7 +1077,9 @@
           "timeControl": { "type": "string" },
           "format": { "type": "string" },
           "organizerName": { "type": "string" },
+          "organizerId": { "type": "string", "format": "uuid" },
           "organizerPhoneNumber": { "type": "string" },
+          "checkedInPlayers": { "type": "integer", "format": "int32" },
           "currentNumberOfParticipants": {
             "type": "integer",
             "format": "int32"
@@ -717,6 +1105,8 @@
             "description": "Name of the player with Black pieces. Displays 'BYE' if there is no opponent.",
             "example": "Nakamura, Hikaru"
           },
+          "whiteId": { "type": "string", "format": "uuid" },
+          "blackId": { "type": "string", "format": "uuid" },
           "boardNumber": {
             "type": "integer",
             "format": "int32",
@@ -738,7 +1128,33 @@
           "pairings": {
             "type": "array",
             "items": { "$ref": "#/components/schemas/GamePairingDTO" }
-          }
+          },
+          "roundStatus": { "type": "string" }
+        }
+      },
+      "RegistrationRequestDTO": {
+        "type": "object",
+        "properties": {
+          "requestId": { "type": "string", "format": "uuid" },
+          "playerId": { "type": "string", "format": "uuid" },
+          "playerName": { "type": "string" },
+          "playerEloRating": { "type": "integer", "format": "int32" },
+          "playerFideId": { "type": "string" },
+          "requestedAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "OtpVerifyRequest": {
+        "type": "object",
+        "properties": {
+          "email": { "type": "string" },
+          "otp": { "type": "string" }
+        }
+      },
+      "AuthResponse": {
+        "type": "object",
+        "properties": {
+          "token": { "type": "string" },
+          "message": { "type": "string" }
         }
       },
       "RegisterRequest": {
@@ -782,12 +1198,9 @@
           }
         }
       },
-      "AuthResponse": {
+      "MessageResponse": {
         "type": "object",
-        "properties": {
-          "token": { "type": "string" },
-          "message": { "type": "string" }
-        }
+        "properties": { "message": { "type": "string" } }
       },
       "LoginRequest": {
         "type": "object",
@@ -796,14 +1209,21 @@
           "password": { "type": "string" }
         }
       },
-      "UserTournamentSummaryDTO": {
+      "PublicUserProfileDTO": {
         "type": "object",
         "properties": {
-          "tournamentId": { "type": "string", "format": "uuid" },
-          "tournamentName": { "type": "string" },
-          "format": { "type": "string" },
-          "status": { "type": "string" },
-          "role": { "type": "string" }
+          "userId": { "type": "string", "format": "uuid" },
+          "firstName": { "type": "string" },
+          "lastName": { "type": "string" },
+          "eloRating": { "type": "integer", "format": "int32" },
+          "fideId": { "type": "string" },
+          "gamesPlayed": { "type": "integer", "format": "int64" },
+          "gamesWon": { "type": "integer", "format": "int64" },
+          "gamesLost": { "type": "integer", "format": "int64" },
+          "gamesDrawn": { "type": "integer", "format": "int64" },
+          "tournamentsPlayed": { "type": "integer", "format": "int64" },
+          "tournamentsOrganized": { "type": "integer", "format": "int64" },
+          "tournamentsStaffed": { "type": "integer", "format": "int64" }
         }
       },
       "OpponentDTO": {
@@ -837,6 +1257,104 @@
           }
         }
       },
+      "MyTournamentDTO": {
+        "type": "object",
+        "properties": {
+          "tournamentId": { "type": "string", "format": "uuid" },
+          "tournamentName": { "type": "string" },
+          "format": { "type": "string", "enum": ["SWISS", "ROUND_ROBIN"] },
+          "status": {
+            "type": "string",
+            "enum": ["DRAFT", "UPCOMING", "ONGOING", "COMPLETED", "CANCELLED"]
+          },
+          "startDateTime": { "type": "string", "format": "date-time" },
+          "location": { "type": "string" },
+          "role": { "type": "string" },
+          "score": { "type": "number", "format": "double" },
+          "finalRank": { "type": "integer", "format": "int32" },
+          "gamesPlayed": { "type": "integer", "format": "int32" },
+          "wins": { "type": "integer", "format": "int32" },
+          "losses": { "type": "integer", "format": "int32" },
+          "draws": { "type": "integer", "format": "int32" }
+        }
+      },
+      "PageMyTournamentDTO": {
+        "type": "object",
+        "properties": {
+          "totalElements": { "type": "integer", "format": "int64" },
+          "totalPages": { "type": "integer", "format": "int32" },
+          "numberOfElements": { "type": "integer", "format": "int32" },
+          "first": { "type": "boolean" },
+          "last": { "type": "boolean" },
+          "pageable": { "$ref": "#/components/schemas/PageableObject" },
+          "size": { "type": "integer", "format": "int32" },
+          "content": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/MyTournamentDTO" }
+          },
+          "number": { "type": "integer", "format": "int32" },
+          "sort": { "$ref": "#/components/schemas/SortObject" },
+          "empty": { "type": "boolean" }
+        }
+      },
+      "PageableObject": {
+        "type": "object",
+        "properties": {
+          "pageNumber": { "type": "integer", "format": "int32" },
+          "paged": { "type": "boolean" },
+          "pageSize": { "type": "integer", "format": "int32" },
+          "unpaged": { "type": "boolean" },
+          "offset": { "type": "integer", "format": "int64" },
+          "sort": { "$ref": "#/components/schemas/SortObject" }
+        }
+      },
+      "SortObject": {
+        "type": "object",
+        "properties": {
+          "unsorted": { "type": "boolean" },
+          "sorted": { "type": "boolean" },
+          "empty": { "type": "boolean" }
+        }
+      },
+      "UserDetailsDTO": {
+        "type": "object",
+        "properties": {
+          "userId": { "type": "string", "format": "uuid" },
+          "firstName": { "type": "string" },
+          "lastName": { "type": "string" },
+          "date_of_birth": { "type": "string", "format": "date" },
+          "email": { "type": "string" },
+          "mobileNo": { "type": "string" },
+          "fideId": { "type": "string" }
+        }
+      },
+      "PageTournamentResponse": {
+        "type": "object",
+        "properties": {
+          "totalElements": { "type": "integer", "format": "int64" },
+          "totalPages": { "type": "integer", "format": "int32" },
+          "numberOfElements": { "type": "integer", "format": "int32" },
+          "first": { "type": "boolean" },
+          "last": { "type": "boolean" },
+          "pageable": { "$ref": "#/components/schemas/PageableObject" },
+          "size": { "type": "integer", "format": "int32" },
+          "content": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/TournamentResponse" }
+          },
+          "number": { "type": "integer", "format": "int32" },
+          "sort": { "$ref": "#/components/schemas/SortObject" },
+          "empty": { "type": "boolean" }
+        }
+      },
+      "StaffForTournamentResponse": {
+        "type": "object",
+        "properties": {
+          "keyUsed": { "type": "string" },
+          "name": { "type": "string" },
+          "userID": { "type": "string", "format": "uuid" }
+        }
+      },
       "StaffKeyResponse": {
         "type": "object",
         "properties": {
@@ -844,6 +1362,44 @@
           "used": { "type": "boolean" },
           "createdAt": { "type": "string", "format": "date-time" },
           "usedAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "PageRegistrationRequestDTO": {
+        "type": "object",
+        "properties": {
+          "totalElements": { "type": "integer", "format": "int64" },
+          "totalPages": { "type": "integer", "format": "int32" },
+          "numberOfElements": { "type": "integer", "format": "int32" },
+          "first": { "type": "boolean" },
+          "last": { "type": "boolean" },
+          "pageable": { "$ref": "#/components/schemas/PageableObject" },
+          "size": { "type": "integer", "format": "int32" },
+          "content": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/RegistrationRequestDTO" }
+          },
+          "number": { "type": "integer", "format": "int32" },
+          "sort": { "$ref": "#/components/schemas/SortObject" },
+          "empty": { "type": "boolean" }
+        }
+      },
+      "PageTournamentPlayerDTO": {
+        "type": "object",
+        "properties": {
+          "totalElements": { "type": "integer", "format": "int64" },
+          "totalPages": { "type": "integer", "format": "int32" },
+          "numberOfElements": { "type": "integer", "format": "int32" },
+          "first": { "type": "boolean" },
+          "last": { "type": "boolean" },
+          "pageable": { "$ref": "#/components/schemas/PageableObject" },
+          "size": { "type": "integer", "format": "int32" },
+          "content": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/TournamentPlayerDTO" }
+          },
+          "number": { "type": "integer", "format": "int32" },
+          "sort": { "$ref": "#/components/schemas/SortObject" },
+          "empty": { "type": "boolean" }
         }
       },
       "TournamentPlayerDTO": {
@@ -880,6 +1436,12 @@
             "description": "Total points scored (Win = 1, Draw = 0.5, Bye = 1)",
             "example": "4.5"
           },
+          "totalGamesPlayed": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Total number of games played in this tournament",
+            "example": 6
+          },
           "buchholz": {
             "type": "number",
             "format": "double",
@@ -898,6 +1460,10 @@
             "description": "Tiebreaker 3: Sum of defeated opponents' scores + half of drawn opponents' scores",
             "example": "9.25"
           },
+          "buchholzCut2": { "type": "number", "format": "double" },
+          "buchholzMedian": { "type": "number", "format": "double" },
+          "winsWithBlack": { "type": "integer", "format": "int32" },
+          "directEncounterScore": { "type": "number", "format": "double" },
           "gamesWithBlack": {
             "type": "integer",
             "format": "int32",
@@ -905,6 +1471,34 @@
             "example": 2
           },
           "numberOfWins": { "type": "integer", "format": "int32", "example": 4 }
+        }
+      },
+      "PageLeaderboardEntryDTO": {
+        "type": "object",
+        "properties": {
+          "totalElements": { "type": "integer", "format": "int64" },
+          "totalPages": { "type": "integer", "format": "int32" },
+          "numberOfElements": { "type": "integer", "format": "int32" },
+          "first": { "type": "boolean" },
+          "last": { "type": "boolean" },
+          "pageable": { "$ref": "#/components/schemas/PageableObject" },
+          "size": { "type": "integer", "format": "int32" },
+          "content": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/LeaderboardEntryDTO" }
+          },
+          "number": { "type": "integer", "format": "int32" },
+          "sort": { "$ref": "#/components/schemas/SortObject" },
+          "empty": { "type": "boolean" }
+        }
+      },
+      "PlatformStatsDTO": {
+        "type": "object",
+        "properties": {
+          "totalUsers": { "type": "integer", "format": "int64" },
+          "totalTournamentsOrganized": { "type": "integer", "format": "int64" },
+          "totalGamesPlayed": { "type": "integer", "format": "int64" },
+          "liveTournaments": { "type": "integer", "format": "int64" }
         }
       }
     },
