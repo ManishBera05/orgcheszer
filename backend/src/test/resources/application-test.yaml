@@ -9,11 +9,18 @@ spring:
   # Point Redis to a dummy port so it doesn't try to connect to prod
   data:
     redis:
+      # ADD THIS LINE: Override the url so Spring doesn't look for ${REDIS_URL}
+      url: redis://localhost:9999
       host: localhost
       port: 9999
   # Tell Spring to use a simple HashMap in memory instead of Redis for caching
   cache:
     type: simple
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: test@gmail.com
+    password: 12345678
 application:
   security:
     jwt:
@@ -23,3 +30,8 @@ application:
 admin:
   secret:
     key: 111111 #dummy admin secret key
+
+
+app:
+  cors:
+    allowed-origins: http://localhost:5173

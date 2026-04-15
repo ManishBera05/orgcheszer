@@ -77,6 +77,9 @@ public class Tournament {
     @Column(name = "is_demo", nullable = false)
     private boolean isDemo = false;
 
+    @Column(nullable = false)
+    private boolean isClubTournament = false;
+
     @ManyToMany
     @JoinTable(
             name = "tournament_players", // Name of the join table
@@ -98,4 +101,9 @@ public class Tournament {
 
     @OneToMany(mappedBy = "tournament", cascade = CascadeType.ALL)
     private List<TournamentTicket> tickets;
+
+    // Add to Tournament.java
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "club_id", nullable = true) // null = public tournament
+    private Club club;
 }

@@ -289,8 +289,10 @@ public class MatchmakingService {
         roundsRepository.save(round);
 
         // After saving the result, record opponents for both players
-        addOpponent(game.getWhitePlayer().getId(), tournamentId, game.getBlackPlayer().getId());
-        addOpponent(game.getBlackPlayer().getId(), tournamentId, game.getWhitePlayer().getId());
+        if (!isResultAlreadySet) {
+            addOpponent(game.getWhitePlayer().getId(), tournamentId, game.getBlackPlayer().getId());
+            addOpponent(game.getBlackPlayer().getId(), tournamentId, game.getWhitePlayer().getId());
+        }
 
         updatePlayerScore(game.getWhitePlayer().getId(), tournamentId, result, true);
         updatePlayerScore(game.getBlackPlayer().getId(), tournamentId, result, false);

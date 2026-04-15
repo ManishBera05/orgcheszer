@@ -24,8 +24,12 @@ const ProfilePage = lazy(() => import("./pages/ProfilePage"));
 const ContactPage = lazy(() => import("./pages/ContactPage"));
 const PublicProfilePage = lazy(() => import("./pages/PublicProfilePage"));
 const UserTournamentStatsPage = lazy(
-  () => import("./pages/UserTournamentStatsPage.tsx"),
-); // NEW
+  () => import("./pages/UserTournamentStatsPage"),
+);
+
+// NEW CLUB PAGES
+const ClubsPage = lazy(() => import("./pages/ClubsPage"));
+const ClubDetailPage = lazy(() => import("./pages/ClubDetailPage"));
 
 function PageLoader() {
   return (
@@ -123,7 +127,6 @@ export default function App() {
               </ProtectedRoute>
             }
           />
-
           <Route
             path="tournaments/:tournamentId/update"
             element={
@@ -166,10 +169,21 @@ export default function App() {
             }
           />
 
+          {/* CLUBS ROUTES */}
+          <Route
+            path="clubs"
+            element={
+              <ProtectedRoute>
+                <ClubsPage />
+              </ProtectedRoute>
+            }
+          />
+          {/* Public users can view the club details/leaderboard, so no ProtectedRoute wrapper needed for this one */}
+          <Route path="clubs/:clubId" element={<ClubDetailPage />} />
+
           <Route path="contact" element={<ContactPage />} />
           <Route path="users/:userId" element={<PublicProfilePage />} />
 
-          {/* NEW STATS PAGE */}
           <Route
             path="users/:userId/tournaments/:tournamentId"
             element={<UserTournamentStatsPage />}

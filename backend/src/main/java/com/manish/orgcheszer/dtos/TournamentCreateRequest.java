@@ -1,13 +1,19 @@
 package com.manish.orgcheszer.dtos;
 
+import com.manish.orgcheszer.entities.Club;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.UUID;
 
+@Builder
 @Getter
 @Setter
 @NoArgsConstructor
@@ -49,4 +55,13 @@ public class TournamentCreateRequest {
     @Schema(description = "Format of the tournament. Currently supports SWISS or ROUND_ROBIN",
             example = "SWISS")
     private String format;
+
+    List<UUID> playerId;
+
+    @Schema(description = "Tells if the tournament is a intra club tournament or not",
+            example = "false")
+    private Boolean isClubTournament;
+
+    @Schema(description = "Tells which club the tournament belongs to")
+    private UUID clubId;
 }

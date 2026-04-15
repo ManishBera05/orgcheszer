@@ -4,6 +4,7 @@ import com.manish.orgcheszer.dtos.RegistrationRequestDTO;
 import com.manish.orgcheszer.dtos.TournamentCreateRequest;
 import com.manish.orgcheszer.dtos.TournamentPlayerDTO;
 import com.manish.orgcheszer.dtos.TournamentResponse;
+import com.manish.orgcheszer.entities.Club;
 import com.manish.orgcheszer.entities.PlayerTournamentStats;
 import com.manish.orgcheszer.entities.RegistrationRequest;
 import com.manish.orgcheszer.entities.Rounds;
@@ -19,6 +20,8 @@ import com.manish.orgcheszer.exceptions.BadRequestException;
 import com.manish.orgcheszer.exceptions.ConflictException;
 import com.manish.orgcheszer.exceptions.ResourceNotFoundException;
 import com.manish.orgcheszer.exceptions.UnauthorizedActionException;
+import com.manish.orgcheszer.repositories.ClubPlayerStatsRepository;
+import com.manish.orgcheszer.repositories.ClubRepository;
 import com.manish.orgcheszer.repositories.GameRepository;
 import com.manish.orgcheszer.repositories.PlayerTournamentStatsRepository;
 import com.manish.orgcheszer.repositories.RegistrationRequestRepository;
@@ -38,6 +41,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -58,6 +62,7 @@ public class TournamentService {
     private final LeaderboardService leaderboardService;
     private final RoundsRepository roundsRepository;
     private final GameRepository gameRepository;
+    private final ClubRepository clubRepository;
 
     @Value("${tournament.require-approval}")
     private boolean requireApproval;
@@ -88,6 +93,10 @@ public class TournamentService {
         tournament.setFormat(TournamentFormat.valueOf(request.getFormat()));
         tournament.setStatus(requireApproval ? TournamentStatus.DRAFT : TournamentStatus.UPCOMING);
         tournament.setOrganizer(organizer);
+        tournament.setClubTournament(request.getIsClubTournament() != null && request.getIsClubTournament());
+        tournament.setClub(clubRepository.findById(request.getClubId())
+                .orElseThrow(() -> new ResourceNotFoundException("Club not found")));
+        tournament.setStatus(request.getIsClubTournament() != null ? TournamentStatus.UPCOMING: tournament.getStatus());
 
         tournamentRepository.save(tournament);
         log.info("Tournament {} Created", tournament.getTournamentId());
@@ -135,8 +144,9 @@ public class TournamentService {
             throw new UnauthorizedActionException("Only the organizer can update this tournament");
         }
 
-        if (tournament.getStatus() != TournamentStatus.UPCOMING) {
-            throw new ConflictException("Cannot update a tournament that has already started");
+        if (tournament.getStatus() == TournamentStatus.COMPLETED ||
+            tournament.getStatus() == TournamentStatus.ONGOING) {
+            throw new ConflictException("Cannot update a tournament that has already started or completed");
         }
         if(tournament.getPlayers().size() > request.getMaxParticipants()){
             throw new ConflictException("The number of registered players already more than the set max");
@@ -169,6 +179,10 @@ public class TournamentService {
         if (tournament.getStatus() == TournamentStatus.COMPLETED ||
                 tournament.getStatus() == TournamentStatus.ONGOING) {
             throw new ConflictException("Cannot cancel a completed or ongoing tournament");
+        }
+
+        if(tournament.getStatus() == TournamentStatus.DRAFT){
+            deleteDraftTournament(tournamentId);
         }
 
         // Delete All pending registration requests for this tournament
@@ -545,27 +559,40 @@ public class TournamentService {
                 .collect(Collectors.toList());
     }
 
+    public void addClubPlayerToTournamentFrom(Users player, Tournament tournament, Club club){
+        if(!getCurrentUser().equals(club.getOrganizer())){
+            throw new ConflictException("Cannot add players except the club organizer");
+        }
+        addPlayerToTournament(player,tournament);
+    }
+
     // HELPER — shared by free tournament flow and approval flow
     // Creates stats, adds to players list, issues ticket
     private RegistrationRequestDTO addPlayerToTournament(Users player, Tournament tournament) {
         UUID tournamentId = tournament.getTournamentId();
 
+        log.info("Adding player to the tournament");
         // Assign pairingId
         int pairingId = playerTournamentStatsRepository
                 .countByTournamentTournamentId(tournamentId) + 1;
+        log.info("got the pairing id");
 
+        if (tournament.getPlayers() == null) {
+            tournament.setPlayers(new ArrayList<>());
+        }
         tournament.getPlayers().add(player);
 
-        PlayerTournamentStats stats = new PlayerTournamentStats();
-        stats.setPlayer(player);
-        stats.setTournament(tournament);
-        stats.setCurrentScore(0);
+        if(!(tournament.isClubTournament())) {
+            PlayerTournamentStats stats = new PlayerTournamentStats();
+            stats.setPlayer(player);
+            stats.setTournament(tournament);
+            stats.setCurrentScore(0);
 //        stats.setPairingId(pairingId);
-        playerTournamentStatsRepository.save(stats);
+            playerTournamentStatsRepository.save(stats);
 
-        tournamentRepository.save(tournament);
-        tournamentTicketService.issueTicket(player, tournament);
-
+            tournamentRepository.save(tournament);
+            tournamentTicketService.issueTicket(player, tournament);
+        }
         log.info("Player {} in the tournament {} is approved", player.getId(), tournamentId);
 
         return RegistrationRequestDTO.builder()
@@ -587,7 +614,7 @@ public class TournamentService {
         }
 
         tournamentRepository.delete(tournament);
-        log.info("Tournament {} deleted from the drafts by admin", tournamentId);
+        log.info("Tournament {} deleted from the drafts by owner or admin", tournamentId);
     }
 
     public void deleteAllDraftTournaments() {

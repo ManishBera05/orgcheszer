@@ -7,7 +7,9 @@ import io.swagger.v3.oas.annotations.info.Contact;
 import io.swagger.v3.oas.annotations.info.Info;
 import io.swagger.v3.oas.annotations.security.SecurityScheme;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
 
+//@Profile("dev")
 @Configuration
 @OpenAPIDefinition(
         info = @Info(

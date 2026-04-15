@@ -23,22 +23,17 @@ public class RateLimitConfig {
 
     @Bean
     public RedisClient redisClient(
-            @Value("${spring.data.redis.host:localhost}") String host,
-            @Value("${spring.data.redis.port:6379}") int port) {
+            @Value("${spring.data.redis.url}") String redisUrl) {
 
-        // 1. Set a very short timeout (e.g., 200 milliseconds)
-        RedisURI redisUri = RedisURI.builder()
-                .withHost(host)
-                .withPort(port)
-                .withTimeout(Duration.ofMillis(200)) // <-- FAIL FAST TIMEOUT
-                .build();
+        // Use full URL (supports rediss:// automatically)
+        RedisClient client = RedisClient.create(redisUrl);
 
-        RedisClient client = RedisClient.create(redisUri);
-
-        // 2. Tell Lettuce NOT to queue commands if Redis is disconnected
+        // Fail-fast + no queueing
         client.setOptions(ClientOptions.builder()
-                .disconnectedBehavior(ClientOptions.DisconnectedBehavior.REJECT_COMMANDS) // <-- INSTANTLY REJECT
-                .timeoutOptions(TimeoutOptions.builder().fixedTimeout(Duration.ofMillis(2000)).build())
+                .disconnectedBehavior(ClientOptions.DisconnectedBehavior.REJECT_COMMANDS)
+                .timeoutOptions(TimeoutOptions.builder()
+                        .fixedTimeout(Duration.ofMillis(2000))
+                        .build())
                 .build());
 
         return client;

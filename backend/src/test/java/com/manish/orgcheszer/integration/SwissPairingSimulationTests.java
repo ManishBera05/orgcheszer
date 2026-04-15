@@ -38,12 +38,15 @@ import static org.junit.jupiter.api.Assertions.*;
  * Each round: assert pairings match expected → feed results → repeat.
  * Final assertion: each player's total score matches the TRF.
  */
-@SpringBootTest
+@SpringBootTest(properties = {
+        "APP_CORS_ALLOWED_ORIGINS=http://localhost:5173"
+})
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 @ActiveProfiles("test")
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 //@Testcontainers
 @WithMockUser(username = "organizer@test.com")
+
 class SwissPairingSimulationTests {
 
 //    @Container

@@ -1,6 +1,6 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
-import { format, parseISO } from "date-fns";
+import { format } from "date-fns";
 import type { TournamentStatus, GameResult } from "../types";
 
 /* ─── Tailwind class merge helper ────────────────────────── */

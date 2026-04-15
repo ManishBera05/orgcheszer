@@ -10,7 +10,6 @@ export interface Page<T> {
   numberOfElements: number;
   empty: boolean;
 }
-
 export interface LoginRequest {
   email: string;
   password: string;
@@ -28,8 +27,6 @@ export interface AuthResponse {
   token: string;
   message: string;
 }
-
-// NEW TYPES FOR OTP VERIFICATION
 export interface VerifyOtpRequest {
   email: string;
   otp: string;
@@ -39,6 +36,7 @@ export interface InitiateResponse {
 }
 
 export type TournamentStatus =
+  | "DRAFT"
   | "UPCOMING"
   | "ONGOING"
   | "COMPLETED"
@@ -55,8 +53,12 @@ export interface TournamentCreateRequest {
   location: string;
   timeControl: string;
   format: TournamentFormat;
+  playerId?: string[];
+  isClubTournament?: boolean;
+  clubId?: string; // <--- ADD THIS LINE
 }
 
+// FIX: Added club? property so TypeScript knows about it
 export interface TournamentResponse {
   tournamentId: string;
   tournamentName: string;
@@ -75,6 +77,8 @@ export interface TournamentResponse {
   checkedInPlayers: number;
   currentNumberOfParticipants: number;
   status: TournamentStatus;
+  clubTournament?: boolean;
+  club?: { id: string; name?: string } | string | any;
 }
 
 export interface TournamentPlayerDTO {
@@ -113,7 +117,6 @@ export interface RoundPairingsResponse {
   pairings: GamePairingDTO[];
   roundStatus: string;
 }
-
 export interface LeaderboardEntryDTO {
   rank: number;
   playerID: string;
@@ -132,7 +135,6 @@ export interface LeaderboardEntryDTO {
   winsWithBlack?: number;
   directEncounterScore?: number;
 }
-
 export interface StaffKeyResponse {
   keyValue: string;
   used: boolean;
@@ -216,5 +218,42 @@ export interface AuthUser {
 export interface ApiError {
   message: string;
   status?: number;
+}
+
+export interface ClubDTO {
+  clubId: string;
+  organizerId: string;
+  name: string;
+  description: string;
+  organizerName: string;
+  inviteCode: string;
+  activeMembers: number;
+  pendingRequests: number;
+  createdAt: string;
+}
+export interface ClubCreateRequest {
+  name: string;
+  description: string;
+}
+export interface ClubMemberDTO {
+  userId: string;
+  firstName: string;
+  lastName: string;
+  eloRating: number;
+  fideId: string;
+  status: string;
+  joinedAt: string;
+}
+export interface ClubLeaderboardDTO {
+  rank: number;
+  userId: string;
+  playerName: string;
+  eloRating: number;
+  tournamentsPlayed: number;
+  totalGamesPlayed: number;
+  totalWins: number;
+  totalLosses: number;
+  totalDraws: number;
+  totalScore: number;
 }
 // --- END OF FILE src/types/index.ts ---

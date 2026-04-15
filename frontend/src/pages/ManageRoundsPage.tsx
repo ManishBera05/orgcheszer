@@ -1,7 +1,12 @@
 // --- START OF FILE src/pages/ManageRoundsPage.tsx ---
 import { useState, useEffect, useRef } from "react";
 import { useParams, Link, useSearchParams } from "react-router-dom";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  useQuery,
+  useMutation,
+  useQueryClient,
+  useQueries,
+} from "@tanstack/react-query";
 import { Scanner } from "@yudiel/react-qr-scanner";
 import { toast } from "sonner";
 import {
@@ -38,6 +43,7 @@ import {
   getStaffKeys,
   checkIn,
 } from "../api/matchmaking";
+import { endClubTournament } from "../api/clubs";
 import type {
   GamePairingDTO,
   GameResult,
@@ -72,7 +78,6 @@ function GameRow({
   const isBye = game.result === "BYE" || game.blackName === "BYE";
   const isSettled = isLocked || isBye;
 
-  // FIX: Close dropdown if clicked outside
   useEffect(() => {
     const h = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node))
@@ -82,8 +87,6 @@ function GameRow({
     return () => document.removeEventListener("mousedown", h);
   }, []);
 
-  // FIX: Keep the local dropdown state in sync with the server data.
-  // If another user updates this board, the UI will instantly switch from "Select result" to the actual winner.
   useEffect(() => {
     setSelected(game.result !== "PENDING" ? game.result : "");
   }, [game.result]);
@@ -129,7 +132,6 @@ function GameRow({
         >
           {game.boardNumber}
         </span>
-
         <Link
           to={`/users/${game.whiteId || game.whiteName}`}
           style={{
@@ -152,7 +154,6 @@ function GameRow({
         >
           {game.whiteName}
         </Link>
-
         <span
           style={{
             fontSize: "0.75rem",
@@ -185,7 +186,6 @@ function GameRow({
         >
           B
         </span>
-
         {isBye ? (
           <em style={{ color: "var(--text-muted)", flex: 1 }}>BYE</em>
         ) : (
@@ -668,7 +668,7 @@ function KeysManager({ tournamentId }: { tournamentId: string }) {
       toast.success("Keys generated!");
       queryClient.invalidateQueries({ queryKey: ["staff-keys"] });
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: ApiError) => toast.error(e.message),
   });
 
   const handleCopy = (keyValue: string) => {
@@ -751,7 +751,11 @@ function KeysManager({ tournamentId }: { tournamentId: string }) {
               }}
             >
               <div
-                style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.75rem",
+                }}
               >
                 <code style={{ color: "var(--camel-400)", fontWeight: 600 }}>
                   {k.keyValue}
@@ -760,27 +764,34 @@ function KeysManager({ tournamentId }: { tournamentId: string }) {
                   onClick={() => handleCopy(k.keyValue)}
                   title="Copy Key"
                   style={{
-                    background: "none",
-                    border: "none",
+                    background: "var(--bg-elevated)",
+                    border: "1px solid var(--border)",
                     color: "var(--text-muted)",
                     cursor: "pointer",
                     display: "flex",
                     alignItems: "center",
+                    justifyContent: "center",
+                    padding: "0.3rem",
+                    borderRadius: "4px",
+                    transition: "color 150ms ease, border-color 150ms ease",
                   }}
-                  onMouseEnter={(e) =>
-                    (e.currentTarget.style.color = "var(--text-primary)")
-                  }
-                  onMouseLeave={(e) =>
-                    (e.currentTarget.style.color = "var(--text-muted)")
-                  }
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.color = "var(--text-primary)";
+                    e.currentTarget.style.borderColor = "var(--accent-cta)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.color = "var(--text-muted)";
+                    e.currentTarget.style.borderColor = "var(--border)";
+                  }}
                 >
-                  <Copy size={14} />
+                  <Copy size={13} />
                 </button>
               </div>
               <span
                 style={{
                   fontSize: "0.75rem",
                   color: k.used ? "var(--danger)" : "var(--success)",
+                  fontWeight: 600,
                 }}
               >
                 {k.used ? "Used" : "Available"}
@@ -906,8 +917,15 @@ export default function ManageRoundsPage() {
       toast.error(err.message || "Failed to generate round."),
   });
 
+  // FIX: Properly type the End Tournament mutation to accept the tournament ID
   const endTourneyMut = useMutation({
-    mutationFn: () => endTournament(tournamentId!),
+    mutationFn: async (tid: string) => {
+      if (tournament?.clubTournament) {
+        await endClubTournament(tid);
+      } else {
+        await endTournament(tid);
+      }
+    },
     onSuccess: () => {
       toast.success("Tournament successfully completed!");
       queryClient.invalidateQueries({ queryKey: ["tournament"] });
@@ -948,11 +966,17 @@ export default function ManageRoundsPage() {
     tournament.status !== "COMPLETED" &&
     tournament.status !== "CANCELLED";
 
-  // ROUND ROBIN FIX: Do not lock old rounds if the format is ROUND_ROBIN. Only lock if tournament is over.
   const isRoundLocked =
     tournament.status === "COMPLETED" ||
     tournament.status === "CANCELLED" ||
     (tournament.format !== "ROUND_ROBIN" && round < latestRound);
+
+  // FIX: Safely extract clubId
+  const clubId =
+    typeof tournament.club === "string" ? tournament.club : tournament.club?.id;
+  const backLink =
+    tournament.clubTournament && clubId ? `/clubs/${clubId}` : "/dashboard";
+  const backText = tournament.clubTournament ? "Club" : "Dashboard";
 
   return (
     <>
@@ -990,7 +1014,7 @@ export default function ManageRoundsPage() {
         }}
       >
         <Link
-          to="/dashboard"
+          to={backLink}
           style={{
             display: "inline-flex",
             alignItems: "center",
@@ -1001,7 +1025,7 @@ export default function ManageRoundsPage() {
             marginBottom: "1.5rem",
           }}
         >
-          <ArrowLeft size={15} /> Back to Dashboard
+          <ArrowLeft size={15} /> Back to {backText}
         </Link>
 
         <div
@@ -1044,7 +1068,7 @@ export default function ManageRoundsPage() {
                     `WARNING: You are ending the tournament early (Round ${latestRound} of ${tournament.numberOfRounds} completed).\n\nFinal standings will be permanently locked. Are you sure you want to proceed?`,
                   )
                 ) {
-                  endTourneyMut.mutate();
+                  endTourneyMut.mutate(tournamentId!);
                 }
               } else {
                 if (
@@ -1052,7 +1076,7 @@ export default function ManageRoundsPage() {
                     "Are you sure you want to end this tournament? Final standings will be permanently locked.",
                   )
                 ) {
-                  endTourneyMut.mutate();
+                  endTourneyMut.mutate(tournamentId!);
                 }
               }
             }}
@@ -1094,24 +1118,30 @@ export default function ManageRoundsPage() {
           >
             Matchmaking
           </button>
-          <button
-            className={`mr-tab ${activeTab === "checkin" ? "active" : ""}`}
-            onClick={() => setActiveTab("checkin")}
-          >
-            Check-in
-          </button>
-          <button
-            className={`mr-tab ${activeTab === "requests" ? "active" : ""}`}
-            onClick={() => setActiveTab("requests")}
-          >
-            Requests
-          </button>
-          <button
-            className={`mr-tab ${activeTab === "keys" ? "active" : ""}`}
-            onClick={() => setActiveTab("keys")}
-          >
-            Staff Keys
-          </button>
+          {!tournament.clubTournament && (
+            <button
+              className={`mr-tab ${activeTab === "checkin" ? "active" : ""}`}
+              onClick={() => setActiveTab("checkin")}
+            >
+              Check-in
+            </button>
+          )}
+          {!tournament.clubTournament && (
+            <button
+              className={`mr-tab ${activeTab === "requests" ? "active" : ""}`}
+              onClick={() => setActiveTab("requests")}
+            >
+              Requests
+            </button>
+          )}
+          {!tournament.clubTournament && (
+            <button
+              className={`mr-tab ${activeTab === "keys" ? "active" : ""}`}
+              onClick={() => setActiveTab("keys")}
+            >
+              Staff Keys
+            </button>
+          )}
         </div>
 
         {activeTab === "rounds" && (
@@ -1288,11 +1318,15 @@ export default function ManageRoundsPage() {
           </div>
         )}
 
-        {activeTab === "checkin" && <CheckInTab tournamentId={tournamentId!} />}
-        {activeTab === "requests" && (
+        {activeTab === "checkin" && !tournament.clubTournament && (
+          <CheckInTab tournamentId={tournamentId!} />
+        )}
+        {activeTab === "requests" && !tournament.clubTournament && (
           <RequestsManager tournamentId={tournamentId!} />
         )}
-        {activeTab === "keys" && <KeysManager tournamentId={tournamentId!} />}
+        {activeTab === "keys" && !tournament.clubTournament && (
+          <KeysManager tournamentId={tournamentId!} />
+        )}
       </div>
     </>
   );

@@ -20,6 +20,7 @@ import com.manish.orgcheszer.repositories.TournamentRepository;
 import com.manish.orgcheszer.repositories.TournamentStaffRepository;
 import com.manish.orgcheszer.repositories.UsersRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -31,6 +32,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class UserService {
@@ -250,6 +252,8 @@ public class UserService {
         PlayerTournamentStats stats = statsRepository
                 .findByPlayerIdAndTournamentTournamentId(userId, tournamentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Stats not found"));
+
+        log.info("Stats of player {} for tournament {} found", userId, tournamentId);
 
         int wins   = stats.getWinsWithWhite()  + stats.getWinsWithBlack();
         int draws  = stats.getDrawsWithWhite() + stats.getDrawsWithBlack();
