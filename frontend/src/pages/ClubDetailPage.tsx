@@ -1,5 +1,5 @@
 // --- START OF FILE src/pages/ClubDetailPage.tsx ---
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -13,7 +13,6 @@ import {
   RefreshCw,
   XCircle,
   CheckCircle2,
-  Swords,
   Settings,
 } from "lucide-react";
 import {
@@ -97,7 +96,7 @@ export default function ClubDetailPage() {
   });
 
   const isOrganizer = me?.userId === club?.organizerId;
-  const isMember = isOrganizer || members?.some((m) => m.userId === me?.userId);
+  // const isMember = isOrganizer || members?.some((m) => m.userId === me?.userId);
 
   // Mutations
   const approveMut = useMutation({

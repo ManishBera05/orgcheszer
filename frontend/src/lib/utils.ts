@@ -88,6 +88,7 @@ export function statusClass(status: TournamentStatus): string {
     ONGOING: "ongoing",
     COMPLETED: "completed",
     CANCELLED: "cancelled",
+    DRAFT: "draft",
   };
   return map[status] ?? "completed";
 }

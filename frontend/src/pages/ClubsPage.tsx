@@ -9,11 +9,10 @@ import {
   UserPlus,
   KeyRound,
   Loader2,
-  Info,
   ChevronRight,
 } from "lucide-react";
 import { getMyClubs, createClub, joinClub } from "../api/clubs";
-import { formatDate } from "../lib/utils";
+// import { formatDate } from "../lib/utils";
 import type { ApiError } from "../types";
 
 export default function ClubsPage() {

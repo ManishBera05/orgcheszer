@@ -1,12 +1,7 @@
 // --- START OF FILE src/pages/ManageRoundsPage.tsx ---
 import { useState, useEffect, useRef } from "react";
 import { useParams, Link, useSearchParams } from "react-router-dom";
-import {
-  useQuery,
-  useMutation,
-  useQueryClient,
-  useQueries,
-} from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Scanner } from "@yudiel/react-qr-scanner";
 import { toast } from "sonner";
 import {
